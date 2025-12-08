@@ -438,7 +438,10 @@ The most important lesson here isn't just about iPhones; it's about **Default Co
 * Hackers love defaults.
 * Whether it's a router with the password `admin`, or a database with no password, Information Gathering is often about finding devices that people forgot to secure.
 
-***
+---
+
+NETWORK HACKING - MITM ATTACKS
+===
 
 ### <span style = "color: #569cd6">What is ARP Poisoning?</span> 
 
@@ -1376,3 +1379,222 @@ When you use Wireshark or BetterCAP in this scenario, you must listen on the **B
 4.  **Configure:** SSID = "Free WiFi", Internet = `eth0`, Wifi = `wlan0`.
 5.  **Launch Attack:** Click "Create Hotspot".
 6.  **Sniff:** Open Wireshark and listen on `wlan0`.
+ 
+---
+
+NETWORK HACKING - DETECTION & SECURITY
+===
+
+### <span style = "color: #569cd6">Detecting ARP Poisoning Attacks</span>
+
+This lecture focuses on **Defense**. You have spent the last few hours attacking networks; now you learn how to know if someone is doing it to *you*.
+
+The core principle of detection is simple: **The Router's identity should never change.**
+
+### 1. The "Smoking Gun": The MAC Address
+To understand detection, you must remember how the attack works:
+* **Normal:** Your computer thinks the Router (IP `10.0.2.1`) has the MAC address `AA:AA:AA...` (The Real Router).
+* **Attacked:** The hacker tells your computer, "Actually, I am the Router now." Your computer updates its list so `10.0.2.1` points to `BB:BB:BB...` (The Hacker).
+
+**Detection Strategy:** If the Router's IP stays the same, but its MAC address suddenly changes, you are being hacked.
+
+### 2. Method 1: The Manual Check (Command Line)
+You can check this yourself using the command prompt on Windows (or Terminal on Linux/macOS).
+
+* **Command:** `arp -a`
+* **What to look for:** Find the IP address of your Gateway (Router). Look at the "Physical Address" (MAC) next to it.
+
+
+
+**The Experiment:**
+1.  **Before Attack:** The instructor runs `arp -a`. The Router's MAC ends in `35-00`.
+2.  **During Attack:** He launches the attack from Kali.
+3.  **After Attack:** He runs `arp -a` again. The Router's MAC has changed to `55-77` (The Kali Machine's MAC).
+4.  **Conclusion:** The device detected a change in the physical hardware associated with the Router's IP. This is the proof of an attack.
+
+### 3. Method 2: The Automated Watchdog (XARP)
+Checking the command line every 5 minutes is impossible. The instructor introduces a tool called **XARP** to do this for you automatically.
+
+* **What is XARP?** It is a security tool that runs in the background and watches your ARP table like a security guard.
+* **How it works:** It takes a snapshot of your network when you connect. If any critical MAC address (like the Router's) changes while you are connected, XARP instantly triggers an alarm.
+
+
+
+**The Alert:**
+In the lecture, as soon as the instructor launches the attack, XARP pops up a red warning window:
+* **"Change of MAC address detected for 10.20.14.1"**
+* It even identifies the **Attacker's IP** because it sees which device is claiming to be the router.
+
+### Summary
+| Method | Pros | Cons |
+| :--- | :--- | :--- |
+| **Command Line (`arp -a`)** | No installation needed. Available on every computer. | You have to check it manually. You need to memorize your router's real MAC address to notice a difference. |
+| **XARP Tool** | Automatic. Alerts you instantly. Identifies the attacker. | Requires installation. |
+
+**Key Takeaway:**
+In a secure network, a Router's physical hardware (MAC address) never changes. Any software that detects a change in the Gateway's MAC address is effectively an "ARP Spoofing Detector."
+
+---
+ ### <span style = "color: #569cd6">Detecting Suspicious Activities</span>
+
+This lecture covers the final piece of the Network Hacking puzzle: **Forensics and Prevention**.
+
+You learned how to execute the attacks and how to detect them using simple tools like XARP. Now, the instructor shows you how to use **Wireshark** for deep-dive analysis and how to make your computer completely immune to these attacks using **Static ARP Tables**.
+
+### 1. Detecting the "Scout" (ARP Scanning)
+Before a hacker attacks, they usually scan the network (using `NetDiscover`) to find targets. You can see this happening in Wireshark.
+
+* **The Setup:** The instructor enables a special setting in Wireshark: **"Detect ARP request storms."**
+(Edit -> Preferences -> Protocols -> ARP/RARP -> Detect ARP request storms)
+* **The Event:** He runs `NetDiscover` on his Kali machine.
+* **The Evidence:** Wireshark suddenly fills up with hundreds of packets from a single source (`10.20.40.67`).
+    * *The Packet:* "Who has IP .1? Tell 67." "Who has IP .2? Tell 67." "Who has IP .3? Tell 67."
+* **The Conclusion:** If you see one computer asking for *every* IP address in the network rapidly, that device is mapping the network. It is a "Port Scan" or "ARP Storm."
+
+![alt text](image-1.png)
+
+### 2. Detecting the "Attack" (ARP Spoofing)
+Next, the instructor runs the actual ARP Spoofing attack. Wireshark's "Expert Information" tool catches this instantly.
+(Analyze -> Expert Information)
+
+* **The Warning:** Wireshark displays: **"Duplicate IP address configured."**
+* **Why?**
+    * The real router says: "I am `10.0.2.1` and my MAC is `AA:AA...`"
+    * The hacker says: "I am `10.0.2.1` and my MAC is `BB:BB...`"
+* **Wireshark's Logic:** "It is physically impossible for the IP `10.0.2.1` to have two different physical MAC addresses at the same time. Someone is lying."
+![alt text](image.png)
+
+### 3. The Ultimate Defense: Static ARP Tables
+Finally, the instructor explains the only way to stop this attack 100%.
+
+**The Problem (Dynamic ARP):**
+By default, your computer's ARP table is **Dynamic**.
+* *Meaning:* It is like a list written in pencil. If a hacker sends a message saying "I am the router," your computer erases the old MAC and writes in the hacker's MAC. It trusts everyone.
+
+![alt text](image-2.png)
+
+**The Solution (Static ARP):**
+You can set your ARP table to **Static**.
+* *Meaning:* You write the list in permanent marker (or stone).
+* *How it works:* You manually tell your computer, "The Router is `10.0.2.1` and its MAC is `AA:AA`. **Never change this.**"
+* *The Result:* When the hacker sends a spoofed packet saying "I am the router," your computer checks its static list, sees that the entry is locked, and ignores the hacker entirely. The attack fails instantly.
+
+### 4. The Trade-off
+Why doesn't everyone use Static ARP?
+* **Pros:** 100% Security against ARP Spoofing.
+* **Cons:** **Extreme Inconvenience.**
+    * If you buy a new router, your internet stops working until you manually update the MAC address.
+    * If you go to a coffee shop, you have to manually type in the router's MAC address before you can use the WiFi.
+    * It is great for high-security servers or home desktops that never move, but terrible for laptops and mobile phones.
+
+### Summary of Network Hacking
+This concludes the Network Hacking section. You have learned the full lifecycle:
+1.  **Pre-Connection:** Cracking WiFi passwords.
+2.  **Connection:** Mapping the network (`NetDiscover`, `Nmap`).
+3.  **Post-Connection:** Man-In-The-Middle (`ARP Spoofing`, `Fake AP`).
+4.  **Exploitation:** Sniffing passwords, Bypassing HTTPS (`SSL Strip`), Injection.
+5.  **Defense:** Detection (`XARP`, `Wireshark`) and Prevention (`Static ARP`).
+
+---
+
+ ### <span style = "color: #569cd6">Preventing MITM Attacks - Method 1</span>
+
+This lecture marks a shift from **Passive Defense** (watching for attacks) to **Active Defense** (making attacks useless).
+
+The instructor explains that on public networks (cafes, airports), you cannot control the router, and you often cannot stop someone from intercepting your connection. Therefore, the only winning move is to make your data unreadable through **Encryption**.
+
+### 1. The Problem with Detection
+Tools like Xarp and Wireshark tell you *when* you are being attacked, but they don't *stop* it.
+* **Scenario:** You are at a hotel. The "Free WiFi" is actually a fake access point run by a hacker next door.
+* **The Reality:** You are already connected. The hacker is already the Man-In-The-Middle. You cannot kick them off the network.
+* **The Solution:** You must ensure that even though they have your data, it looks like scrambled gibberish that they cannot read.
+
+### 2. Solution A: "HTTPS Everywhere" (Browser Extension)
+*Note: This specific extension mentioned in the course has since been retired because its features are now built directly into modern browsers.*
+
+**The Concept:**
+Most websites today support **HTTPS** (Secure/Encrypted), but many still allow **HTTP** (Insecure) connections. Hackers use tools like SSLstrip to force your browser down to the insecure HTTP version so they can read your passwords.
+
+**How it works:**
+The "HTTPS Everywhere" extension acts like a bodyguard for your browser.
+* **Hacker:** "Hey Browser, use the insecure HTTP version of StackOverflow."
+* **Extension:** "No. I know StackOverflow supports encryption. I am forcing HTTPS."
+
+**The Result:**
+* **Without Extension:** The hacker downgrades the site, you see no padlock, and they steal your password.
+* **With Extension:** The site loads with the padlock. The hacker intercepts the packet, but it is encrypted. They see `Xy7#b9@f` instead of your password.
+
+### 3. The Limitations (Why this isn't enough)
+The instructor demonstrates that while forcing HTTPS is good, it is not a silver bullet.
+
+1.  **HTTP-Only Sites:** Some older websites (like the test site `vulnweb.com`) *do not* support HTTPS at all. The extension cannot force encryption if the server doesn't support it. On these sites, you are still 100% vulnerable.
+2.  **Metadata Leaks (DNS):** Even if the content is encrypted, the *destination* often isn't.
+    * The hacker cannot see *what* you are reading on `bing.com`.
+    * But they **can** see that you are visiting `bing.com`.
+    * *Demonstration:* The instructor visits DuckDuckGo. The hacker's logs clearly show "Target is visiting duckduckgo.com," even though they can't see the search query.
+
+**Modern Context: "HTTPS-Only Mode"**
+Since this course was recorded, the "HTTPS Everywhere" extension has been discontinued. Its functionality is now a standard feature in Chrome, Firefox, and Edge called **"HTTPS-Only Mode"** or **"Always Use Secure Connections."**
+You don't need to install the plugin anymore; you just need to enable this setting in your browser's security preferences.
+
+### Summary
+| Defense Method | What it protects | What leaks |
+| :--- | :--- | :--- |
+| **HTTPS Extension** | Protects passwords and content on *most* sites. | Leaks domain names (DNS). Leaks everything on HTTP-only sites. |
+
+---
+
+ ### <span style = "color: #569cd6">Preventing MITM Attacks - Method 2</span>
+
+While **HTTPS Everywhere** is a great free tool, it has cracks (it leaks DNS data and fails on HTTP-only sites). To seal those cracks, you need a **Virtual Private Network (VPN)**.
+
+### 1. The Experiment: Total Blindness
+To prove the power of a VPN, the instructor performs a live test:
+* **Action:** He connects his victim machine to a VPN (ZSVPN).
+* **Attack:** He browses the internet while the "Hacker Machine" listens.
+* **Result:** The Hacker sees **nothing**.
+    * No usernames/passwords (even on insecure HTTP sites like `vulnweb.com`).
+    * No website names (DNS is hidden).
+    * The hacker only sees a stream of scramble gibberish flowing to one single IP address (the VPN server).
+
+### 2. How it Works: The "Encrypted Tunnel"
+To understand why the hacker was blinded, you have to understand the architecture of a VPN connection.
+
+* **Normal Connection:** Your data travels "naked" through the local network (Router -> ISP -> Website). Anyone standing on that path (like a hacker in the cafe) can see it.
+* **VPN Connection:** The VPN software builds a cryptographic "Tunnel" around your data.
+    * **Encapsulation:** Your data (the letter) is put inside a steel box (the packet).
+    * **Routing:** The box is sent to the VPN Server.
+    * **Decryption:** The VPN Server opens the box and sends the letter to the final destination (Google, Facebook, etc.).
+ 
+
+Because the "Tunnel" starts at your computer and ends at the VPN Server, the hacker sitting in the middle (at the cafe or airport) only sees the outside of the steel box. They cannot open it.
+
+### 3. The New "Man-in-the-Middle" (The Trust Issue)
+The lecture highlights a critical trade-off. By using a VPN, you are shifting your trust.
+
+* **Before:** You trusted your Local Router (which might be hacked).
+* **Now:** You trust the **VPN Provider**.
+
+Because the VPN server is the one that "opens the box" to send your data to the internet, **they** technically have the ability to see your traffic. This is why the instructor warns:
+* **Avoid Free VPNs:** Running these servers costs millions. If it's free, they are likely selling your data to pay for it.
+* **Check Policies:** Ensure the provider has a strict "No Logs" policy.
+
+### 4. Defense in Depth: The Perfect Combo
+The instructor concludes that you shouldn't choose between **HTTPS** and **VPN**. You should use **both**.
+
+This creates **Double Encryption**:
+1.  **Layer 1 (VPN):** Encrypts your data from your Laptop $\rightarrow$ VPN Server. (Protects you from the hacker in the cafe).
+2.  **Layer 2 (HTTPS):** Encrypts your data from your Laptop $\rightarrow$ Website. (Protects you from the VPN Provider).
+
+
+
+### Summary Comparison
+
+| Feature | HTTPS Everywhere | VPN | **VPN + HTTPS (Best)** |
+| :--- | :--- | :--- | :--- |
+| **Protects Passwords** | Yes (Mostly) | **Yes** | **Yes** |
+| **Hides Websites Visited** | No (DNS Leaks) | **Yes** | **Yes** |
+| **Protects HTTP Sites** | No | **Yes** | **Yes** |
+| **Cost** | Free | Paid | Paid |
+
+---
