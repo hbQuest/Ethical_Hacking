@@ -724,4 +724,676 @@ Remember when we ran `airmon-ng check kill`? We killed the Network Manager on Ka
 4.  **Login:** Remove the colons from the result and use it as the Wi-Fi password.
 
 ---
+### <span style = "color: #569cd6">How do I hack a network that no one is using?</span>
+
+
+In the previous lecture, you hacked a "Busy" network. The router was shouting thousands of packets (IVs) per second because people were watching Netflix or downloading files.
+
+But what if the network is silent? If `#Data` stays at **0**, you can never crack the password. You need to **force** the router to speak. But there is a catch.
+
+### 1\. The Concept: "The Stranger Danger" Rule
+
+You cannot just start shouting commands at a router (Packet Injection) if it doesn't know who you are.
+
+  * **The Scenario:** You want to send a packet to the router to confuse it.
+  * **The Problem:** By default, routers ignore packets from "Strangers" (devices that are not connected or associated).
+  * **The Solution (Fake Authentication):** You need to raise your hand and say, *"Hi Router, I am here. Please acknowledge me."*
+  * **The Result:** The router adds you to its "Associated List." It doesn't give you the internet (because you don't have the password yet), but it agrees to **listen** to your packets.
+
+**Analogy:**
+Think of the Router as a secure office building.
+
+  * **Connection (Password):** This is having the key to open the front door and go inside. (You don't have this yet).
+  * **Association (Fake Auth):** This is standing at the intercom outside. You press the button, and the security guard acknowledges you are standing there. You aren't inside, but the guard is now listening to you.
+
+
+### 2\. The Setup: Two Terminals
+
+As usual, we need two separate windows open.
+
+**Terminal 1: The Watcher (`airodump-ng`)**
+
+  * **Command:** `airodump-ng --bssid [Target MAC] --channel [Ch] --write arpreplay mon0`
+  * **Goal:** Watch the target. Currently, the `#Data` is 0.
+  * **Observation:** Notice that at the bottom of the screen (the Station list), your hacking computer is **NOT** listed. The router doesn't know you exist.
+
+**Terminal 2: The Actor (`aireplay-ng`)**
+
+  * This is where we run the Fake Authentication attack.
+
+### 3\. The Command: Fake Authentication
+
+This command tells your Wi-Fi card to politely introduce itself to the router.
+
+**The Command:**
+`aireplay-ng --fakeauth 0 -a [Router MAC] -h [Your MAC] [Interface]`
+
+**The Breakdown:**
+
+| Flag | Meaning | Explanation |
+| :--- | :--- | :--- |
+| `--fakeauth 0` | **The Attack** | "Perform a Fake Authentication attack." <br>The `0` means "Run this once." |
+| `-a` | **Access Point** | The **Target's** MAC Address (BSSID). |
+| `-h` | **Host (You)** | **YOUR** Wireless Adapter's MAC Address. <br>*Note: This is different from previous attacks where `-c` was the victim. Here, `-h` is YOU.* |
+
+### 4\. The Tricky Part: Finding YOUR MAC Address
+
+In the lecture, the instructor shows a confusing part about finding your own MAC address while in Monitor Mode.
+
+1.  Run `ifconfig`.
+2.  Look at your interface (`wlan0` or `mon0`).
+3.  You won't see a clear MAC address. You will see a long string of numbers called `unspec`.
+4.  **The Rule:** Your MAC address is the **first 12 digits** of that mess.
+5.  **The Formatting:** You must replace the dashes (`-`) with colons (`:`).
+      * *From:* `00-11-22-33-44-55`
+      * *To:* `00:11:22:33:44:55`
+
+### 5\. Verification: How do you know it worked?
+
+Look back at **Terminal 1** (`airodump-ng`). Two things will happen instantly:
+
+1.  **The AUTH Column:** The row for the target network will change from empty to **`OPN`** (Open). This means the router is now "Open" to talking to you.
+2.  **The Client List:** Your own MAC address will appear at the bottom of the screen in the "Station" list.
+
+**Status Check:**
+
+  * **Are you connected to the internet?** NO.
+  * **Do you have the password?** NO.
+  * **Are you Associated?** YES. The router now knows your name.
+
+---
+
+### <span style = "color: #569cd6">Cracking Idle WEP Networks - ARP Request Replay Attack</span>
+
+In the previous lecture, you knocked on the door (Association). Now, you are going to force the router to talk to you so you can steal its secrets (IVs).
+
+
+### 1\. The Problem: The Silent Room
+
+You are Associated (the router knows you are there), but the router is silent because no one is using the internet.
+
+  * **Goal:** You need **IVs** (packets) to crack the password.
+  * **Current State:** `#Data` column is stuck at 0.
+
+### 2\. The Solution: The "Echo" Attack (ARP Replay)
+
+To solve this, we use a specific type of packet called an **ARP packet**.
+
+  * **What is ARP?** It stands for "Address Resolution Protocol." It’s a computer asking the network: *"Hey, who possesses the IP address 192.168.1.1?"*
+  * **The Rules:** When a router hears this question, it is **required** to answer it.
+  * **The Hack:**
+    1.  We wait for just **ONE** ARP packet to appear naturally.
+    2.  We capture it.
+    3.  We "Replay" (re-transmit) that same packet back to the router 1,000 times a second.
+    4.  The router, following its programming, answers us 1,000 times a second.
+    5.  **Result:** Every answer creates a new IV. The `#Data` column explodes from 0 to 50,000 in minutes.
+
+### 3\. The Command
+
+This command is very similar to the "Fake Authentication" command you just used, but with a mode switch.
+
+**The Command:**
+`aireplay-ng --arpreplay -b [Target MAC] -h [Your MAC] [Interface]`
+
+**The Breakdown:**
+
+| Flag | Meaning | Explanation |
+| :--- | :--- | :--- |
+| `--arpreplay` | **The Attack Mode** | Tells the tool: *"Listen for an ARP packet and replay it."* |
+| `-b [BSSID]` | **Target MAC** | The Router's MAC address. <br>*(Note: In Fake Auth we used `-a`. Here we use `-b`. They mean the same thing, but different attacks use different flags).* |
+| `-h [Source]` | **Hacker's MAC** | **YOUR** Wi-Fi adapter's MAC address (the one you found using `ifconfig`). |
+| `mon0` | **Interface** | Your wireless card. |
+
+### 4\. The Execution Workflow (The 3 Terminal Setup)
+
+To make this work, you need to juggle three terminal windows at once.
+
+**Terminal 1: The Recorder (`airodump-ng`)**
+
+  * **Status:** Already running. Recording to a file.
+  * **Watch:** The `#Data` column is currently slow/stopped.
+
+**Terminal 2: The Door Knocker (`fakeauth`)**
+
+  * **Status:** You ran this in the previous lecture.
+  * **Action:** The instructor runs this *again* just to be safe. It keeps the connection "alive" so the router doesn't forget you.
+
+**Terminal 3: The Instigator (`arpreplay`)**
+
+  * **Action:** Run the command above.
+  * **The "Waiting Game":** When you hit Enter, **nothing will happen immediately.** The screen will say *"Waiting for an ARP packet..."*
+      * You have to wait for one natural packet to fly through the air. This might take 10 seconds or 5 minutes.
+  * **The Explosion:** Once it catches **one** packet, the screen goes crazy. It starts sending hundreds of packets per second.
+  * **Check Terminal 1:** Look at the `#Data` column. It should be racing upwards (500... 1000... 5000... 20000...).
+
+### 5\. The Cracking (The 64-bit vs 128-bit Secret)
+
+Once the `#Data` reaches a high number (e.g., 50,000), you run `aircrack-ng` on the file. (on Terminal 2: run again `aireplay-ng --fakeauth 0 -a [Router MAC] -h [Your MAC] [Interface]`, and then run `aircrack-ng arpreplay-01.cap` to save to a file named "arpreplay-01.cap")
+
+It's worth mentioning about the **Key Size**:
+
+  * **64-bit Keys:** Short passwords. Usually crackable with **20,000** packets.
+  * **128-bit Keys:** Long passwords. Usually require **40,000 - 80,000** packets.
+
+In this lecture, we had to wait for **47,000 packets** because the target was using 128-bit encryption. If `aircrack-ng` fails at 20,000, just keep the attack running and try again at 50,000.
+
+### Summary Checklist
+
+1.  **Associate:** Ensure you see "Authentication Successful" (Fake Auth).
+2.  **Attack:** Run the `--arpreplay` command.
+3.  **Wait:** Be patient until the tool catches that first packet.
+4.  **Watch:** Verify `#Data` is flying up rapidly.
+5.  **Crack:** Run `aircrack-ng`.
+
+---
+
+### <span style = "color: #569cd6">WPA or WPA2 Cracking</span>
+
+You are moving from WEP (the flimsy, old lock) to **WPA/WPA2** (the modern, heavy-duty bank vault).
+
+Because WPA is so much harder to crack directly, hackers always look for a "shortcut" first. That shortcut is **WPS**.
+
+### 1. WPA vs. WPA2: The "Vault Doors"
+The instructor starts by clarifying a technical detail that often confuses beginners.
+* **WPA (Wi-Fi Protected Access):** The older version. It uses an encryption method called **TKIP**.
+* **WPA2:** The newer, standard version. It uses a stronger encryption method called **CCMP**.
+
+**The Hacker’s Perspective:**
+It **does not matter** which one the target uses. The hacking method is exactly the same for both. From now on, when we say "WPA," we mean "WPA or WPA2."
+
+### 2. The Shortcut: What is WPS?
+Directly attacking WPA encryption is hard because passwords can be complex (e.g., `Tr0ub4dor&3`).
+
+However, many routers have a feature called **WPS (Wi-Fi Protected Setup)**.
+* **The Purpose:** It was designed to help non-technical people connect devices (like printers) without typing a long password.
+* **The Mechanism:** Instead of a password, the device uses an **8-digit PIN** (e.g., `12345678`) or a physical push-button.
+
+
+
+**The Metaphor:**
+Imagine a super-secure steel door (WPA2) that is almost impossible to break down. However, right next to it, there is a small doggy door (WPS) secured only by a piece of plastic.
+* Instead of drilling through the steel, the hacker just crawls through the doggy door.
+* Once inside, the router **hands you** the keys to the steel door (the actual Wi-Fi password).
+
+### 3. The Math: Why is the PIN weak?
+The weakness lies in the **PIN** method.
+* **A Password:** Can be letters, numbers, symbols, and very long. (Billions of combinations).
+* **A WPS PIN:** Is **only numbers** and is **only 8 digits long**.
+
+Because the pool of possible PINs is small (relatively speaking), a computer can try every single combination (00000001, 00000002...) until it finds the right one. This is called a **Brute Force Attack**.
+
+### 4. The "Catch": When does this fail?
+This method is the "Holy Grail" when it works, but it has specific requirements.
+
+**Requirement A: WPS must be Enabled**
+If the owner has disabled WPS in the settings, this attack is impossible.
+
+**Requirement B: It must be "PIN Authenticated"**
+There are two types of WPS:
+1.  **Push Button (PBC):** The router waits for someone to physically press a button on the back of the router. **This cannot be hacked remotely.**
+2.  **PIN:** The router accepts a connection if you type the 8-digit number. **This IS vulnerable.**
+
+**Requirement C: No "Lockout" Policy**
+Modern routers are smart. If they see you guessing the PIN incorrectly 5 times in a row, they might "Lock" WPS for a few hours (or permanently). This makes the attack fail.
+
+### Summary Checklist
+Before trying to crack a WPA network the "hard way," you always check for the "easy way" (WPS) first.
+
+1.  **Scan:** Check if the target network has WPS enabled.
+2.  **Verify:** Is it using PIN authentication (not just Push Button)?
+3.  **Attack:** If yes, we use a tool (which will be introduced in the next lecture) to guess the PIN.
+4.  **Reward:** If the PIN is found, the router reveals the WPA password to you.
+
+---
+
+### <span style = "color: #569cd6">Cracking WPA&WPA2 Without A Wordlist - Reaver</span>
+
+You are going to use a tool called **Reaver** to repeatedly guess the PIN code until the router gives up the password.
+
+### 1. The Filter Tool: `wash`
+Normally, you use `airodump-ng` to see networks. However, `airodump-ng` doesn't tell you if **WPS** is enabled. For that, we use a specialized tool called `wash`.
+
+* **Command:** `wash --interface mon0`
+* **What it does:** It scans the area *only* for networks that have the WPS feature turned on.
+
+**How to read the output:**
+The most important column in the result is labeled **`Lck`** (Locked).
+
+| Lck Value | Meaning | Action |
+| :--- | :--- | :--- |
+| **No** | **The door is unlocked.** The router is accepting PIN guesses. | **ATTACK THIS.** |
+| **Yes** | **The door is locked.** The router has detected too many failed guesses and shut down WPS. | **SKIP THIS.** (The attack will fail). |
+
+
+
+### 2. The Setup: Manual Association
+Just like with the WEP attack, the router ignores "strangers." We need to introduce ourselves first.
+
+* **The Command:** `aireplay-ng --fakeauth 30 -a [Router MAC] -h [Your MAC] mon0`
+* **The "30":** In previous lectures, we used `0` (do it once). Here, we use `30`. This tells the tool: *"Say hello to the router every 30 seconds."*
+    * **Why?** Brute forcing a PIN takes a long time (sometimes hours). We need to keep the connection alive the whole time.
+
+### 3. The Brute Force Tool: `reaver`
+This is the main star of the lecture. `reaver` is a robot that types PINs into the router (e.g., `12345670`, `12345671`...) until it finds the right one.
+
+**The Command:**
+`reaver --bssid [Router MAC] --channel [Ch] --interface mon0 -vvv --no-associate`
+
+**The Flags Explained:**
+
+* **`-vvv` (Very Verbose):** This tells the tool to be "chatty." It will print **every single detail** on the screen.
+    * *Why?* If the attack fails, you need to see exactly *why* (e.g., "Timeout," "Rate Limited"). Without this, you are working blind.
+* **`--no-associate`:** This tells Reaver: *"Don't try to connect to the router yourself. I am doing it manually in another window."*
+    * *Why?* Reaver's built-in connector is buggy. It is more reliable to use `aireplay-ng` (Terminal 1) to hold the door open while `reaver` (Terminal 2) walks through it.
+
+### 4. The Execution Workflow
+We're going to use a specific order of operations to make sure everything runs smoothly:
+
+1.  **Terminal 1:** Type the `aireplay-ng` (Fake Auth) command, but **don't hit Enter yet.**
+2.  **Terminal 2:** Type the `reaver` command and **hit Enter.** (Start the guesser).
+3.  **Terminal 1:** Immediately **hit Enter** on the `aireplay-ng` command. (Start the connection).
+
+**The Result:**
+Reaver will start trying PINs.
+* *Attempt 1:* `12345670` ... Router says: "Wrong."
+* *Attempt 2:* `12345671` ... Router says: "Wrong."
+* ...
+* *Success:* `12345678` ... Router says: "Correct! Here is the Wi-Fi Password."
+
+
+
+### 5. The Golden Reward
+When Reaver succeeds, it shows you two things:
+1.  **WPS PIN:** The 8-digit code (e.g., `12345670`).
+2.  **WPA PSK:** The actual Wi-Fi password (e.g., `UAURWSXR`).
+
+**Key Takeaway:**
+You just bypassed the super-secure WPA2 encryption by guessing a simple 8-digit number. You can now use that password to connect your phone or laptop to the Wi-Fi.
+
+### Summary Checklist
+1.  **Find Target:** Run `wash`. Look for `Lck: No`.
+2.  **Prep:** Open two terminals.
+3.  **Terminal 1:** Prepare `aireplay-ng` (Fake Auth every 30s).
+4.  **Terminal 2:** Run `reaver` with `-vvv` and `--no-associate`.
+5.  **Wait:** Watch Reaver try the PINs. If you are lucky (or if the PIN is simple like `12345670`), it will crack in seconds. If not, it might take hours.
+
+---
+
+### <span style = "color: #569cd6">Standard Method - Capturing The Handshake</span>
+
+This lecture covers the **standard method** for hacking modern Wi-Fi. Since most networks today use WPA2 and have WPS disabled, this is the technique you will use 90% of the time.
+
+
+### 1. The Problem: WPA is Smart
+In the WEP lectures, we just collected random packets because the key (IV) was hidden inside them.
+* **WEP:** Every packet contains a piece of the puzzle.
+* **WPA/WPA2:** Every packet is encrypted with a **temporary, unique key**. Even if you capture 1,000,000 packets of people watching YouTube, they are useless to you. They contain no clues about the actual Wi-Fi password.
+
+### 2. The Solution: The "Handshake"
+There is only **one moment** when the router and the device verify the password: **The moment they connect.**
+
+* **The Scenario:** When your phone joins the Wi-Fi, it sends a packet saying, "I know the password." The router replies, "Prove it." They exchange 4 specific packets to verify the password without actually sending the password through the air.
+* **The Goal:** This conversation is called the **4-Way Handshake**. If we record this specific conversation, we can take it home and try to crack it later.
+
+
+
+### 3. The Strategy: The "Kick and Catch"
+We have a problem: Clients don't connect very often. You might sit in your car for hours waiting for someone to come home and connect to the Wi-Fi.
+
+**The Fix:** We force them to reconnect.
+1.  **Record:** Start `airodump-ng` to record everything.
+2.  **Kick (Deauth):** Use `aireplay-ng` to disconnect a user for just 1 second.
+3.  **Catch:** The user's device says, "Hey, I lost connection!" and immediately tries to reconnect. **Boom.** The Handshake happens, and you record it.
+
+### 4. The Step-by-Step Commands
+
+#### Step 1: The Recorder (`airodump-ng`)
+We need to set up the camera before we create the scene.
+
+* **Command:** `airodump-ng --bssid [Target MAC] --channel [Ch] --write WPA_handshake mon0`
+* **What it does:** Locks onto the target and saves everything to a file named `WPA_handshake`.
+* **Status:** You will see the normal list of connected devices. Watch the top right corner of the screen.
+
+#### Step 2: The Nudge (`aireplay-ng`)
+Now we cause the "glitch" to force the reconnection.
+
+* **Command:** `aireplay-ng --deauth 4 -a [Router MAC] -c [Client MAC] mon0`
+* **The Change:** Notice we used `--deauth 4`.
+    * *Previous Lecture:* We used a huge number (like 100,000) to keep them offline forever (Denial of Service).
+    * *This Lecture:* We use a **small number (4)**. We don't want them to know they are being hacked. We just want their Wi-Fi to "hiccup" so they reconnect automatically.
+
+### 5. The "Gotcha" Moment
+As soon as you run the Deauth command, look at your **Terminal 1 (`airodump-ng`)**.
+
+In the top right corner, a message will flash:
+**`[ WPA Handshake: 11:22:33:44:55:66 ]`**
+
+
+
+**What this means:**
+* You have successfully stolen the "encrypted password file."
+* You can now stop everything (`Ctrl + C`).
+* You have a file on your computer (ending in `.cap`) that contains the handshake.
+
+### Important Distinction
+Beginners often think, "I have the handshake, so I have the password!"
+**No.**
+* You have a **locked box** (The Handshake).
+* Inside the box is the password.
+* You still don't know what the password is.
+
+---
+
+### <span style = "color: #569cd6">Creating A Wordlist - Crunch</span>
+
+This lecture bridges the gap between **capturing** the data and **cracking** the password.
+
+In the previous lecture, you captured the **Handshake**. Think of the Handshake as a locked safe. You have the safe in your possession, but it is locked.
+
+  * **The Problem:** You cannot pick the lock (reverse the math).
+  * **The Solution:** You have to try every possible key until one works.
+
+This "Bag of Keys" is called a **Wordlist**. This lecture teaches you how to manufacture your own custom bag of keys using a tool called **Crunch**.
+
+### 1\. Why create a custom wordlist?
+
+You can download massive wordlists from the internet (like the famous `rockyou.txt`), which contain millions of common passwords (like "password123", "iloveyou", etc.).
+
+However, sometimes you know specific details about your target.
+
+  * **Example:** You know the target is a company called "Tesla" and they probably use passwords with the year 2025.
+  * **The Strategy:** Instead of guessing "monkey123" (which is useless), you use **Crunch** to generate a list containing combinations like "Tesla2025", "Tesla2024", "Elon2025", etc.
+  * **Benefit:** This is much faster and smarter than guessing random words.
+
+### 2\. The Tool: `crunch`
+
+Crunch is a program already installed in Kali. It is a "Wordlist Generator." You give it the rules (length, characters), and it spits out every possible combination.
+
+#### A. The Basic Command
+
+The instructor uses this command to generate a simple list.
+
+**The Syntax:**
+`crunch [min] [max] [characters] -o [filename]`
+
+**The Example:**
+`crunch 6 8 abc12 -o test.txt`
+
+**The Breakdown:**
+
+| Part | Meaning | Explanation |
+| :--- | :--- | :--- |
+| `crunch` | The Tool | Calls the program. |
+| `6` | Min Length | "Don't make any password shorter than 6 characters." |
+| `8` | Max Length | "Don't make any password longer than 8 characters." |
+| `abc12` | Character Set | "ONLY use the letters 'a', 'b', 'c' and the numbers '1', '2'. Do not use 'd' or '9'." |
+| `-o test.txt` | Output | "Save the results into a text file named 'test.txt'." |
+
+**The Result:**
+Crunch will generate thousands of passwords like:
+`aaaaaa`
+`aaaaab`
+...
+`abc121`
+...
+`22222222`
+
+#### B. The Pattern Command (`-t`)
+
+This is a powerful feature. It allows you to "fix" certain parts of the password if you already know them.
+
+**The Scenario:** You saw the person typing. You know the password is exactly **6 characters**, starts with **A**, and ends with **B**. You just missed the middle 4 letters.
+
+**The Command:**
+`crunch 6 6 abc12 -t a@@@@b -o test.txt`
+
+**The Breakdown:**
+
+| Part | Meaning |
+| :--- | :--- |
+| `6 6` | The password is exactly 6 characters long (Min 6, Max 6). |
+| `abc12` | Use these characters to fill in the blanks. |
+| `-t` | **Pattern Flag.** This tells Crunch to follow a specific layout. |
+| `a@@@@b` | **The Pattern.** <br>• **`a`**: The first letter MUST be 'a'.<br>• **`@`**: This symbol is a wildcard. It means "Change this part."<br>• **`b`**: The last letter MUST be 'b'. |
+
+**The Result:**
+Crunch creates a list where every password matches that shape:
+`aaaaab`
+`abaaab`
+`a1212b`
+
+### 3\. Important Warnings
+
+**1. File Size math**
+Be very careful about the file size.
+
+  * If you tell Crunch to generate all passwords using **all alphabet letters (a-z)** with a length of **10 characters**, the file size will be **Petabytes** (millions of Gigabytes). It will crash your computer.
+  * **Beginner Tip:** Start with small lists (6-8 characters) to see how big the file gets before trying huge combinations.
+
+**2. The `man` page**
+The instructor types `man crunch`.
+
+  * **`man`** stands for **Manual**.
+  * In Linux, if you ever forget how to use a tool, type `man [toolname]`. It opens the instruction manual. Press `q` to quit the manual.
+
+### Summary Checklist
+
+1.  **Goal:** Create a text file full of potential passwords.
+2.  **Tool:** `crunch`.
+3.  **Basic Usage:** Define the length (min/max) and the ingredients (letters/numbers).
+4.  **Advanced Usage:** Use `-t` and `@` to set a pattern if you know part of the password.
+5.  **Output:** Always use `-o` to save it to a file, otherwise it just prints millions of lines to your screen and crashes your terminal.
+
+**Next Step:**
+Now you have two files on your computer:
+
+1.  **The Lock:** `WPA_handshake.cap` (from the previous lecture).
+2.  **The Keys:** `test.txt` (the wordlist you just made).
+
+---
+
+### <span style = "color: #569cd6">Cracking WPA&WPA2 Using A Wordlist Attack</span>
+
+This is the "Moment of Truth." You are finally taking the two pieces you created—the **Lock** (Handshake) and the **Keys** (Wordlist)—and smashing them together to see if one opens the other.
+
+### 1. The Mechanism: The "MIC" Check
+There is a concept called **MIC (Message Integrity Code)**. This is the hardest part to understand, so let's use a cooking analogy.
+
+Imagine the Router has a secret recipe for a cake.
+* **The Ingredients:** `Handshake Data` + `Secret Password`.
+* **The Result (MIC):** A specific `Cake`.
+
+When you captured the Handshake, you captured the **Cake** (the MIC), but you don't know the **Ingredient** (the Password) that was used to bake it.
+
+**How Aircrack-ng works:**
+1.  It picks a word from your list (e.g., "apple").
+2.  It mixes "apple" + `Handshake Data` to bake a new cake.
+3.  **Comparison:** Does your new cake look *exactly* like the captured cake?
+    * **No:** Then "apple" is not the password. Throw it away.
+    * **Yes:** Then "apple" **MUST** be the password.
+
+
+
+### 2. The Command
+The command is very similar to the WEP cracking command, but with one crucial addition: the **`-w`** flag (for Wordlist).
+
+**The Command:**
+`aircrack-ng [Handshake File] -w [Wordlist File]`
+
+**Example:**
+`aircrack-ng wpa_handshake-01.cap -w test.txt`
+
+**The Breakdown:**
+
+| Part | Meaning |
+| :--- | :--- |
+| `aircrack-ng` | The Cracking Tool. |
+| `wpa_handshake.cap` | **The Lock.** The file where you captured the 4-way handshake. |
+| `-w` | **The Keyring.** Tells the tool: "I am providing a list of guesses." |
+| `test.txt` | **The Keys.** The text file you made with `crunch` (or downloaded) containing the passwords. |
+
+### 3. The Execution
+When you hit Enter, you will see a screen updating rapidly.
+
+* **Speed:** Look for the **k/s** (keys per second) indicator. This tells you how fast your computer is guessing. A normal laptop might do 2,000 keys per second. A powerful gaming PC might do 20,000.
+* **The Result:**
+    * **KEY FOUND!** The password was in your text file. Success!
+    * **Passphrase not in dictionary:** The tool tried every single word in your file, and none of them matched. The attack failed.
+
+### 4. The "Hard Truth" about WPA Cracking
+There is a very important limitation at the end: **"The success of this attack depends on your wordlist."**
+
+Unlike WEP (which is a math problem that *always* gets solved), WPA is a guessing game.
+* If the victim's password is `password123` and that word is in your list: **You win.**
+* If the victim's password is `I_L0v3_P1zz4_88!` and that specific string is NOT in your list: **You lose.** You could run this for 100 years and never find it.
+
+### 5. Advanced Methods (Briefly Mentioned)
+There are ways to make this faster, which you might explore later:
+* **GPU Cracking:** Using your Graphics Card (Nvidia/AMD) instead of your CPU. GPUs are math beasts and can guess passwords 100x faster than a CPU.
+* **Rainbow Tables:** Pre-calculated tables that speed up the process (though less common for WPA salt).
+* **Evil Twin:** If you can't crack the password, you create a fake "Free Wi-Fi" page and trick the human into typing it for you.
+
+### Summary Checklist
+1.  **Verify:** Ensure you have the `.cap` file with the handshake.
+2.  **Prepare:** Ensure you have a wordlist (created by `crunch` or downloaded like `rockyou.txt`).
+3.  **Run:** `aircrack-ng [cap file] -w [wordlist]`.
+4.  **Wait:** Let it run.
+5.  **Result:** If it says "Key Found," you simply copy that password and log in!
+
+--- 
+
+### 1. Where is the MIC?
+The MIC is inside the **Handshake File** (`.cap`) you captured.
+
+Think of the Handshake file as a **locked briefcase** you stole from the air.
+* You cannot look inside the briefcase.
+* However, pasted on the *outside* of the briefcase is a sticker with a long string of random characters. **That sticker is the MIC.**
+
+You do not "get" the MIC; you **found** it when you captured the handshake. It is the answer key.
+
+
+### 2. How is it calculated? (The Recipe)
+The MIC is the result of a mathematical recipe. If you change even *one* ingredient, the result changes completely.
+
+To crack the password, your computer (running `aircrack-ng`) tries to cook the exact same dish to see if it matches the sticker on the briefcase.
+
+Here are the ingredients `aircrack-ng` mixes together:
+
+#### A. From your Wordlist (The "Guess"):
+1.  **The Password:** This is the only unknown variable (e.g., "password123").
+
+#### B. From the Handshake File (The Known Ingredients):
+2.  **The SSID:** The name of the Wi-Fi (e.g., "Home_Network"). This acts as "salt" (flavoring) so that the password "password123" creates a different MIC on *your* network than it does on *my* network.
+3.  **ANonce (Authenticator Nonce):** A random number sent by the Router.
+4.  **SNonce (Supplicant Nonce):** A random number sent by the Victim Client.
+5.  **MAC Addresses:** The ID numbers of the Router and the Client.
+
+### 3. The Process: The "Twin Test"
+Here is exactly what `aircrack-ng` is doing in the background, step-by-step:
+
+
+
+1.  **Pick a Word:** It takes the first word from your wordlist (e.g., "apple").
+2.  **The "Slow" Mix (PBKDF2):** It mixes "apple" + the SSID ("Home_Network") to create a master key. (This part is intentionally slow to stop hackers).
+3.  **The "Fast" Mix:** It adds the Random Numbers (Nonces) and MAC addresses from the capture file.
+4.  **The Result:** It produces a **Fake MIC** (e.g., `XYZ`).
+5.  **The Comparison:** It looks at the **Real MIC** on the briefcase (e.g., `ABC`).
+    * Does `XYZ` == `ABC`?
+    * **NO:** Then "apple" is **NOT** the password.
+    * *Next word: "banana"...*
+
+### Summary for your understanding
+* **The MIC:** Is the "Signature" on the captured packet. It proves the sender knew the password without actually sending the password.
+* **The Combination:**
+    $$\text{Password (Guess)} + \text{Salt (SSID)} + \text{Random Numbers (Handshake)} = \text{Your Calculated MIC}$$
+* **The Win Condition:** When **Your Calculated MIC** matches the **Captured MIC** perfectly, you know your guess was correct.
+
+---
+
+### <span style = "color: #569cd6">Securing Your Network From Hackers</span>
+
+Now that we know how to test the security of all known wireless encryptions **(WEP/WPA/WPA2)**, it is relatively easy to secure our networks against these attacks as we know all the weaknesses that can be used by hackers to crack these encryptions.
+
+So lets have a look on each of these encryptions one by one:
+
+1. **WEP:** WEP is an old encryption, and its really weak, as we seen in the course there are a number of methods that can be used to crack this encryption regardless of the strength of the password and even if there is nobody connected to the network. These attacks are possible because of the way WEP works, we discussed the weakness of WEP and how it can be used to crack it, some of these methods even allow you to crack the key in a few minutes.
+
+2. **WPA/WPA2:** WPA and WPA2 are very similar, the only difference between them is the algorithm used to encrypt the information but both encryptions work in the same way. WPA/WPA2 can be cracked in two ways
+
+1. If WPS feature is enabled then there is a high chance of obtaining the key regardless of its complexity, this can be done by exploiting a weakness in the WPS feature. WPS is used to allow users to connect to their wireless network without entering the key, this is done by pressing a WPS button on both the router and the device that they want to connect, the authentication works using an eight digit pin, hackers can brute force this pin in relatively short time (in an average of 10 hours), once they get the right pin they can use a tool called reaver to reverse engineer the pin and get the key, this is all possible due to the fact that the WPS feature uses an easy pin (only 8 characters and only contains digits), so it's not a weakness in WPA/WPA2, it's a weakness in a feature that can be enabled on routers that use WPA/WPA2 which can be exploited to get the actual WPA/WPA2 key.
+
+2. If WPS is not enabled, then the only way to crack WPA/WPA2 is using a dictionary attack, in this attack a list of passwords (dictionary) is compared against a file (handshake file) to check if any of the passwords is the actual key for the network, so if the password does not exist in the wordlist then the attacker will not be able to find the password.
+
+**Conclusion:**
+
+1. Do not use WEP encryption, as we seen how easy it is to crack it regardless of the complexity of the password and even if there is nobody connected to the network.
+
+2. Use WPA2 with a complex password, make sure the password contains small letters, capital letters, symbols and numbers and;
+
+3. Ensure that the WPS feature is disabled as it can be used to crack your complex WPA2 key by brute-forcing the easy WPS pin.
+
+---
+
+This lecture is the "Defense" chapter. After spending the last few sections learning how to break into networks, now you need to know how to lock your own doors so other hackers can't do the same to you.
+
+### 1. Finding the "Control Room" (The Router Page)
+To change the security settings, you have to log into the router itself. The router has a mini-website built inside it called the **Admin Panel**.
+
+**How to find it:**
+1.  **The Command:** Open your terminal and type `ip route`.
+2.  **The Target:** Look for the line that says `default via ...`.
+    * The IP address listed there (e.g., `192.168.0.1` or `10.0.2.1`) is your **Default Gateway**.
+    * **Translation:** "Default Gateway" is just a fancy name for your Router. It is the gate that leads to the internet.
+
+
+**How to enter:**
+Copy that IP address, paste it into your web browser (Chrome/Firefox), and hit Enter. You will see a login page.
+* **Username/Password:** These are usually printed on a sticker on the back of your physical router. (Username: admin)
+
+### 2. The Three Layers of Defense
+Once you are logged in, you need to change three specific settings to stop the attacks you learned earlier.
+
+#### A. Kill the "Wordlist Attack" (WPA2 Settings)
+* **The Setting:** Go to "Wireless" or "Wi-Fi Settings" -> "Security."
+* **The Fix:**
+    1.  **Mode:** Set it to **WPA2** (or WPA3 if available). Never use WEP.
+    2.  **Password:** This is your defense against the Dictionary/Wordlist attack.
+    * *Weak:* `password123` (Cracked in 1 second).
+    * *Strong:* `I_L0v3_P1zz4_88!` (14+ characters, symbols, numbers, mixed case).
+    * *Why:* If the password is not in the hacker's wordlist, the attack fails.
+
+#### B. Kill the "Reaver Attack" (Disable WPS)
+* **The Setting:** Look for a tab called "WPS" or "Wi-Fi Protected Setup."
+* **The Fix:** Turn it **OFF (Disable)**.
+* **Crucial Note:** If your router is "Dual Band" (has 2.4GHz and 5GHz), make sure you disable WPS for **BOTH**.
+* **Why:** As we learned, WPS is the "Doggy Door" next to the main vault. Even if you have a 50-character password, a hacker can bypass it in hours if WPS is on.
+
+
+
+[Image of WPS button on router]
+
+
+#### C. The "VIP List" (MAC Filtering)
+* **The Setting:** Look for "Access Control" or "MAC Filtering."
+* **The Fix:** You can create an "Allow List" (White List).
+    * You type in the MAC address of your phone, your laptop, and your TV.
+    * **The Result:** The router will reject *any* other device, even if they know the correct password.
+* **Why:** This stops hackers from connecting even if they steal your password.
+
+### 3. The "Emergency Cord" (Ethernet)
+The instructor mentions a very clever trick regarding **Deauthentication Attacks**.
+
+**The Scenario:** A hacker is spamming your network with Deauth packets.
+* **The Effect:** Your Wi-Fi keeps disconnecting. You cannot stay online long enough to log into the router and ban the hacker.
+* **The Solution:** Plug an **Ethernet Cable** (LAN cable) from your computer directly into the router.
+* **Why it works:** Deauthentication packets travel over radio waves (Wi-Fi). They cannot touch a physical wire.
+* **The Result:** You will have a stable connection to the router, allowing you to log in, change the password, or ban the hacker's MAC address, while the hacker is uselessly attacking the airwaves.
+
+### Summary Checklist for your Home Network
+1.  [ ] Find your Gateway IP (`ip route` in Linux, `route print` in Windows CMD, `Get-NetRoute` in PowerShell).
+2.  [ ] Log in to the router.
+3.  [ ] Set security to **WPA2** (AES).
+4.  [ ] Set a complex, **14+ character password**.
+5.  [ ] **Disable WPS** (most important!).
+6.  [ ] (Optional) Enable MAC Filtering.
 
