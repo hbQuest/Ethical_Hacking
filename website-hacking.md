@@ -2039,6 +2039,7 @@ The instructor notes that some modern websites (like `zSecurity.org`) look "clea
 | **4. Attack** | Test **every** vulnerability (SQL, XSS, LFI) on **every** input. |
 
 ---
+
 ### <span style = "color: #569cd6">Writing a Pentest Report</span>
 
 A **Pentest Report** is the official document that tells the client what you found, how dangerous it is, and how to fix it. Without this report, your client cannot improve their security, and you (the pentester) usually don't get paid.
@@ -2067,8 +2068,6 @@ This section is short (1-2 pages) and contains **no technical jargon**.
 * **Impact Overviews:** instead of saying "SQL Injection in parameter ID," you say "Critical flaw allowing unauthorized access to the customer database."
 * **Strategic Recommendations:** High-level advice like "Update your patching policy" rather than specific code fixes.
 
-
-
 #### C. The Engagement Summary (The Rules)
 This section protects you legally and clarifies the work.
 * **Scope:** Lists exactly what you were allowed to test (e.g., `192.168.1.1` to `192.168.1.50`). If a vulnerability was found on a server *outside* this list, you note that it was out of scope.
@@ -2082,7 +2081,6 @@ This is the longest section. You create a detailed subsection for **every single
 * **Proof of Concept (PoC):** Step-by-step instructions on how to trigger the bug. You must include the **HTTP Request** you sent and the **HTTP Response** the server gave back.
 * **Screenshots:** Visual proof that the exploit worked.
 * **Remediation:** Specific technical instructions (e.g., "Use Prepared Statements in PHP" or "Sanitize input using HTML Entity encoding").
-
 
 ### 3. Legal and Liability
 The instructor mentions a **Legal Section** containing disclaimers, GDPR notices, and privacy statements.
@@ -2111,8 +2109,6 @@ This is the preventative measure. It means training developers to write code tha
 * **The Ideal:** You build a house with fireproof materials so it never catches fire.
 * **The Problem:** This is very hard. Developers make mistakes, and often you use code written by other people (third-party libraries) that you didn't write yourself.
 
-
-
 ### 2. Code Review (Checking the Work)
 This is where a second pair of eyes looks over the code to find mistakes before the application goes live.
 * **The Process:** Even if you wrote the code yourself, you get another expert to review line-by-line to catch things you missed.
@@ -2132,8 +2128,6 @@ This is an open invitation to hackers worldwide: "If you find a bug in my site, 
 * **How it works:** You list your company on a platform (like the instructor's site, bug-bounty.com). Hundreds of hackers test your site continuously. If they find a valid bug, you pay them a "bounty" (money or swag).
 * **The Pro:** It is **Future Proof**. Hackers keep testing your site every day, even after you make updates.
 * **The Con:** It can be hard to manage the reports if you don't use a platform to help filter them.
-
-
 
 ### Summary Strategy
 The instructor emphasizes that **100% security is impossible**, but you should aim for the best possible defense.
